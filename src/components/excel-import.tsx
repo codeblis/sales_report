@@ -1,28 +1,38 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { type ParsedBook, readFile } from "@/lib/parse";
+import { importProducts, importPurchases } from "@/actions/catalogo";
+import { type ParsedBook, parseProducts, parsePurchases, readFile } from "@/lib/parse";
 
 type SubmitResult = { error?: string; ok?: boolean; count?: number; errors?: string[] };
 
+/**
+ * Importación masiva desde Excel. Recibe solo props serializables: el parser y
+ * la acción de guardado se eligen aquí a partir de `kind`, porque una página
+ * servidor no puede pasar funciones a un componente cliente.
+ */
 export function ExcelDrop({
+  kind,
   label,
   hint,
-  parse,
-  submit,
   submitLabel,
+  fechaDefault,
 }: {
+  kind: "productos" | "compras";
   label: string;
   hint: string;
-  parse: (sheet: ParsedBook) => unknown[];
-  submit: (rows: unknown[]) => Promise<SubmitResult>;
   submitLabel: string;
+  /** Fecha de respaldo para las filas de compra que no la traigan. */
+  fechaDefault: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<unknown[] | null>(null);
   const [sheetName, setSheetName] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
+
+  const parse = (book: ParsedBook): unknown[] =>
+    kind === "productos" ? parseProducts(book) : parsePurchases(book, fechaDefault);
 
   async function onFile(f: File | null) {
     setResult(null);
@@ -47,7 +57,15 @@ export function ExcelDrop({
     if (!rows) return;
     setBusy(true);
     setResult(null);
-    const r = await submit(rows);
+    const fd = new FormData();
+    fd.append("rows", JSON.stringify(rows));
+    let r: SubmitResult;
+    if (kind === "productos") {
+      r = await importProducts({}, fd);
+    } else {
+      fd.append("fecha", fechaDefault);
+      r = await importPurchases({}, fd);
+    }
     setResult(r);
     if (r.ok) setRows(null);
     setBusy(false);

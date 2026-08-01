@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { importProducts } from "@/actions/catalogo";
 import { ExcelDrop } from "@/components/excel-import";
 import { ProductForm } from "@/components/product-form";
-import { money, pct } from "@/lib/format";
-import { parseProducts } from "@/lib/parse";
+import { money, pct, todayISO } from "@/lib/format";
 import { listProducts } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
@@ -108,15 +106,11 @@ export default async function MercanciaPage({ searchParams }: { searchParams: Pr
           </div>
           <div className="mt-4">
             <ExcelDrop
+              kind="productos"
               label="Elegir archivo Excel"
               hint="El orden de las columnas da igual; los encabezados se detectan solos."
-              parse={parseProducts}
-              submit={(rows) => {
-                const fd = new FormData();
-                fd.append("rows", JSON.stringify(rows));
-                return importProducts({}, fd);
-              }}
               submitLabel="Importar productos"
+              fechaDefault={todayISO()}
             />
           </div>
         </section>

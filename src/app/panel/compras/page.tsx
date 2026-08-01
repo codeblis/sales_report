@@ -1,8 +1,7 @@
-import { deletePurchase, importPurchases } from "@/actions/catalogo";
+import { deletePurchase } from "@/actions/catalogo";
 import { ExcelDrop } from "@/components/excel-import";
 import { PurchaseForm } from "@/components/purchase-assignment-forms";
 import { money, qty, todayISO } from "@/lib/format";
-import { parsePurchases } from "@/lib/parse";
 import { listProducts, loadSnapshot } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
@@ -96,16 +95,11 @@ export default async function ComprasPage() {
           </div>
           <div className="mt-4">
             <ExcelDrop
+              kind="compras"
               label="Elegir archivo Excel"
               hint="Los productos deben existir en el catálogo (se emparejan por código o nombre)."
-              parse={(sheet) => parsePurchases(sheet, todayISO())}
-              submit={(rows) => {
-                const fd = new FormData();
-                fd.append("rows", JSON.stringify(rows));
-                fd.append("fecha", todayISO());
-                return importPurchases({}, fd);
-              }}
               submitLabel="Importar compras"
+              fechaDefault={todayISO()}
             />
           </div>
         </section>
