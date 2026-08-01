@@ -136,6 +136,37 @@ export async function importProducts(
   return { ok: true, count, updated, errors };
 }
 
+/**
+ * Borra un producto, solo si nunca se usó. Uno que ya aparece en una compra,
+ * asignación, venta, corte, recogida o ajuste sostiene esos cálculos: borrarlo
+ * dejaría las líneas sin producto y descuadraría los reportes. Para retirarlo
+ * de la circulación sin perder el historial está el interruptor de "activo".
+ */
+export async function deleteProduct(formData: FormData): Promise<void> {
+  if (!(await requireAdmin())) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const d = await db();
+  const uso = await d
+    .prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM purchase_items   WHERE product_id = ?1) AS compras,
+         (SELECT COUNT(*) FROM assignment_items WHERE product_id = ?1) AS asignaciones,
+         (SELECT COUNT(*) FROM sales            WHERE product_id = ?1) AS ventas,
+         (SELECT COUNT(*) FROM corte_items      WHERE product_id = ?1) AS cortes,
+         (SELECT COUNT(*) FROM retiro_items     WHERE product_id = ?1) AS recogidas,
+         (SELECT COUNT(*) FROM ajuste_items     WHERE product_id = ?1) AS ajustes`,
+    )
+    .bind(id)
+    .first<Record<string, number>>();
+  const historial = Object.values(uso ?? {}).reduce((s, n) => s + Number(n ?? 0), 0);
+  if (historial > 0) redirect("/panel/mercancia?error=historial");
+
+  await d.prepare("DELETE FROM products WHERE id = ?1").bind(id).run();
+  revalidatePath("/panel", "layout");
+  redirect("/panel/mercancia");
+}
+
 /* ============================================================
    COMPRAS
    ============================================================ */
