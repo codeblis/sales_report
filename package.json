@@ -1,0 +1,48 @@
+{
+  "name": "reportes-ventas",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "opennextjs-cloudflare build",
+    "build:next": "next build",
+    "start": "next start",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "db:migrate:local": "wrangler d1 migrations apply reportes-d1 --local",
+    "db:migrate:remote": "wrangler d1 migrations apply reportes-d1 --remote",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.2",
+    "chart.js": "^4.5.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "next": "16.2.12",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.6",
+    "@cloudflare/workers-types": "^5.20260731.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "wrangler": "^4.118.0"
+  },
+  "allowScripts": {
+    "workerd@1.20260730.1": true,
+    "esbuild@0.25.4": true,
+    "esbuild@0.28.1": true,
+    "sharp@0.35.2": true,
+    "sharp@0.34.5": true
+  }
+}
