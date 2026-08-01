@@ -2,6 +2,11 @@
 
 # dependencies
 /node_modules
+# El gestor es pnpm: si alguno de estos aparece, es que se coló otro gestor.
+# Ignorarlos evita que acabe commiteado y conviviendo con pnpm-lock.yaml.
+/package-lock.json
+/yarn.lock
+/bun.lockb
 /.pnp
 .pnp.*
 .yarn/*
