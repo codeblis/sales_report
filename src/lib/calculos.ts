@@ -580,5 +580,20 @@ export function sellerMovements(snap: Snapshot, sellerId: string, states = lineS
       cantidad: n,
     });
   }
+  // Sin esto la merma descuenta mercancía en mano sin dejar rastro, y la ficha
+  // muestra que falta stock sin explicar por qué.
+  for (const a of snap.ajustes) {
+    if (a.seller_id !== sellerId) continue;
+    const productos = new Set(a.items.map((i) => i.product_id));
+    const unico = productos.size === 1 ? byProduct.get([...productos][0])?.nombre : undefined;
+    rows.push({
+      kind: "ajuste",
+      fecha: a.fecha,
+      id: a.id,
+      desc: `Ajuste (merma)${a.nota ? ` — ${a.nota}` : ""}`,
+      producto: unico,
+      cantidad: a.items.reduce((s, i) => s + i.cantidad, 0),
+    });
+  }
   return rows.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.id.localeCompare(b.id));
 }

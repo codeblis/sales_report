@@ -295,7 +295,7 @@ export default async function VendedorPage({
         <div className="card-h">
           <div>
             <h3>Movimientos</h3>
-            <div className="sub">Ventas, cortes, pagos y recogidas en orden</div>
+            <div className="sub">Ventas, cortes, pagos, recogidas y ajustes en orden</div>
           </div>
         </div>
         <div className="tscroll">
