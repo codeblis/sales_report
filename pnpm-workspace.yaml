@@ -1,0 +1,13 @@
+# Ajustes de pnpm. Desde pnpm 10 esto ya no se lee del campo "pnpm" de
+# package.json: https://pnpm.io/settings
+
+# Quién puede ejecutar scripts de instalación. Los tres primeros son binarios
+# nativos que no sirven sin compilarse (esbuild y workerd los necesitan
+# wrangler y opennext; sharp lo usa Next para optimizar imágenes), y son los
+# mismos que la configuración de npm traía aprobados en "allowScripts".
+# core-js solo imprime un mensaje pidiendo donaciones: no hace falta.
+allowBuilds:
+  core-js: false
+  esbuild: true
+  sharp: true
+  workerd: true

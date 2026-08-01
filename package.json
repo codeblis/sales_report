@@ -41,11 +41,5 @@
     "vitest": "^4.1.10",
     "wrangler": "^4.118.0"
   },
-  "allowScripts": {
-    "workerd@1.20260730.1": true,
-    "esbuild@0.25.4": true,
-    "esbuild@0.28.1": true,
-    "sharp@0.35.2": true,
-    "sharp@0.34.5": true
-  }
+  "packageManager": "pnpm@11.18.0"
 }
