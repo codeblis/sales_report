@@ -16,7 +16,7 @@ import {
   sellerMovements,
   sellerTotals,
 } from "@/lib/calculos";
-import { money, qty, todayISO } from "@/lib/format";
+import { money, qty, saldo, todayISO } from "@/lib/format";
 import { getSeller, loadSnapshot } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
@@ -74,8 +74,8 @@ export default async function VendedorPage({
               {!seller.activo && <span className="tag tag-danger">inactivo</span>}
             </h3>
             <div className="sub">
-              {seller.telefono || "Sin teléfono"} · {qty(tot.enMano)} unidades en mano · debe{" "}
-              {money(acct.debe)}
+              {seller.telefono || "Sin teléfono"} · {qty(tot.enMano)} unidades en mano · saldo{" "}
+              {saldo(acct.debe)}
             </div>
           </div>
         </div>
@@ -85,7 +85,7 @@ export default async function VendedorPage({
             ["En mano", `${qty(tot.enMano)} uds`, `${money(tot.enManoValor)} a precio venta`],
             ["Vendido", `${qty(tot.unidadesVendidas)} uds`, money(tot.vendidoMonto)],
             ["Ganancia para ti", money(tot.ganancia), "precio − costo"],
-            ["Debe", money(acct.debe), `${qty(acct.cortesPendientes)} cortes con saldo`],
+            ["Saldo", saldo(acct.debe), `${qty(acct.cortesPendientes)} cortes con saldo`],
           ].map(([l, v, f]) => (
             <div key={l} className="glass tile">
               <div className="t-label">{l}</div>

@@ -26,6 +26,16 @@ export const moneyRaw = (n: number): string => {
   return Number.isInteger(v) ? NF0.format(v) : NF.format(v);
 };
 
+/**
+ * Saldo de un vendedor (`cortado − pagado`). Se vuelve negativo cuando abonó
+ * por delante de sus cortes, y "debe -$100" no se entiende: eso es dinero a su
+ * favor, así que se enuncia en positivo.
+ */
+export const saldo = (n: number): string => {
+  const v = Number.isFinite(n) ? n : 0;
+  return v < 0 ? `${money(-v)} a favor` : money(v);
+};
+
 export const qty = (n: number): string => (Number.isFinite(n) ? NF.format(n) : "0");
 
 export const pct = (n: number): string => (Number.isFinite(n) ? `${n.toFixed(1)}%` : "0%");

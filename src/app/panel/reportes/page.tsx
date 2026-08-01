@@ -8,7 +8,7 @@ import {
   ventasPorDia,
   warehouseLines,
 } from "@/lib/calculos";
-import { fmtDate, money, qty } from "@/lib/format";
+import { fmtDate, money, qty, saldo } from "@/lib/format";
 import { loadSnapshot } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
@@ -161,7 +161,7 @@ export default async function ReportesPage({
             <div className="ts">unidades vendidas</div>
           </div>
           <div className="glass tile">
-            <div className="tl">{money(g.debeTotal)}</div>
+            <div className="tl">{saldo(g.debeTotal)}</div>
             <div className="ts">cuentas por cobrar</div>
           </div>
         </div>
@@ -196,7 +196,7 @@ export default async function ReportesPage({
                 <th className="num">Ventas</th>
                 <th className="num">Ganancia</th>
                 <th className="num">Cobrado</th>
-                <th className="num">Debe</th>
+                <th className="num">Saldo</th>
               </tr>
             </thead>
             <tbody>
@@ -207,7 +207,7 @@ export default async function ReportesPage({
                   <td className="num money">{money(r.ventas)}</td>
                   <td className="num">{money(r.ganancia)}</td>
                   <td className="num">{money(r.cobrado)}</td>
-                  <td className="num">{money(r.debe)}</td>
+                  <td className="num">{saldo(r.debe)}</td>
                 </tr>
               ))}
               {ranking.length === 0 && (

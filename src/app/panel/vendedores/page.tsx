@@ -2,7 +2,7 @@ import Link from "next/link";
 import { NewSellerForm } from "@/components/new-seller-form";
 import { RenewPinButton } from "@/components/renew-pin-button";
 import { lineStates, sellerAccount, sellerLines as sellerLinesOf, sellerTotals } from "@/lib/calculos";
-import { fmtDate, money, qty } from "@/lib/format";
+import { fmtDate, qty, saldo } from "@/lib/format";
 import { listSellers, loadSnapshot } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export default async function VendedoresPage() {
                 <th>Vendedor</th>
                 <th className="num">En mano</th>
                 <th className="num">Vendido</th>
-                <th className="num">Debe</th>
+                <th className="num">Saldo</th>
                 <th>Último acceso</th>
                 <th>Estado</th>
                 <th className="no-print">Acceso</th>
@@ -48,7 +48,7 @@ export default async function VendedoresPage() {
                     </td>
                     <td className="num">{qty(tot.enMano)}</td>
                     <td className="num">{qty(tot.unidadesVendidas)}</td>
-                    <td className="money">{money(acct.debe)}</td>
+                    <td className="money">{saldo(acct.debe)}</td>
                     <td>{s.last_login ? fmtDate(s.last_login) : <span className="dim">nunca entró</span>}</td>
                     <td>
                       {s.activo ? (

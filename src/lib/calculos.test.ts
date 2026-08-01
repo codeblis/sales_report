@@ -259,6 +259,17 @@ describe("sellerTotals y sellerAccount", () => {
     expect(t.enManoValor).toBe(60);
   });
 
+  it("un producto agotado sigue contando en lo vendido", () => {
+    // El portal del vendedor filtraba `enMano > 0` antes de totalizar, así que
+    // esta venta desaparecía de sus cifras en cuanto agotaba el producto.
+    const snap = snapshot({ sales: [venta("v1", "a1", "p", 10, "2026-01-03")] });
+    const todas = sellerLines(snap, "A");
+    expect(todas.find((l) => l.productId === "p")?.enMano).toBe(0);
+    expect(sellerTotals(todas).unidadesVendidas).toBe(10);
+    // Filtrar antes de totalizar es justo lo que lo rompía:
+    expect(sellerTotals(todas.filter((l) => l.enMano > 0)).unidadesVendidas).toBe(0);
+  });
+
   it("la deuda es lo cortado menos lo pagado", () => {
     const snap = snapshot({
       cortes: [corte("co1", "A", "2026-02-01", [["p", 10, 10, 5]])],

@@ -87,8 +87,11 @@ export function VendorPortal({
             <div className="ts">vendido a precio</div>
           </div>
           <div className="glass tile">
-            <div className="tl">{money(cuenta.debe)}</div>
-            <div className="ts">saldo pendiente de cortar</div>
+            {/* Es lo cortado menos lo pagado, no lo que falta por cortar: eso
+                sale abajo, en "Ventas reportadas". Si el vendedor abonó de más
+                queda negativo, y "debes -$100" no se entiende: se enseña a favor. */}
+            <div className="tl">{money(Math.abs(cuenta.debe))}</div>
+            <div className="ts">{cuenta.debe < 0 ? "saldo a tu favor" : "pendiente de pagar"}</div>
           </div>
         </div>
       </section>

@@ -55,11 +55,13 @@ async function VendorContent({
 }) {
   const snap = await loadSnapshot();
   const states = lineStates(snap);
-  const lines = sellerLines(snap, seller.id, states)
-    .filter((l) => l.enMano > 0)
-    .sort((a, b) => a.product.localeCompare(b.product));
-  const tot = sellerTotals(lines);
-  const acct = sellerAccount(snap, seller.id, lines);
+  // Los totales se calculan sobre todas las líneas: si se filtrara antes por
+  // `enMano > 0`, un producto agotado desaparecería de lo vendido y el vendedor
+  // vería cifras menores que las del panel. El filtro es solo para el selector.
+  const todas = sellerLines(snap, seller.id, states);
+  const tot = sellerTotals(todas);
+  const acct = sellerAccount(snap, seller.id, todas);
+  const lines = todas.filter((l) => l.enMano > 0).sort((a, b) => a.product.localeCompare(b.product));
   const pendientes = pendingCorteItems(snap, seller.id, states).map((p) => ({
     productId: p.productId,
     product: p.product,
