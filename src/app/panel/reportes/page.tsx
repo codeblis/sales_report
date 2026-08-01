@@ -161,8 +161,9 @@ export default async function ReportesPage({
             <div className="ts">unidades vendidas</div>
           </div>
           <div className="glass tile">
-            <div className="tl">{saldo(g.debeTotal)}</div>
-            <div className="ts">cuentas por cobrar</div>
+            {/* Igual que en el inicio: si es negativo no hay nada que cobrar. */}
+            <div className="tl">{money(Math.abs(g.debeTotal))}</div>
+            <div className="ts">{g.debeTotal < 0 ? "pagado por delante" : "cuentas por cobrar"}</div>
           </div>
         </div>
         <div className="mt-4" style={{ height: 210 }}>

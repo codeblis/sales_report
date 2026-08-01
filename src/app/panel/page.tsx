@@ -64,7 +64,12 @@ export default async function DashboardPage() {
           ["Ventas de hoy", money(hoyMetrics.ventasMonto), `${qty(hoyMetrics.unidadesVendidas)} unidades`],
           ["Mercancía en almacén", money(g.almacenValorCosto), "valor a costo"],
           ["En manos de vendedores", money(g.enManoValorCosto), "valor a costo"],
-          ["Por cobrar", money(g.debeTotal), "cortes − pagos"],
+          // Negativo = los vendedores abonaron por delante de sus cortes. No hay
+          // nada que cobrar, así que se le da la vuelta al rótulo en vez de
+          // enseñar "Por cobrar −$100".
+          g.debeTotal < 0
+            ? ["Pagado por delante", money(-g.debeTotal), "pagos − cortes"]
+            : ["Por cobrar", money(g.debeTotal), "cortes − pagos"],
         ].map(([l, v, f]) => (
           <div key={l} className="glass tile">
             <div className="t-label">{l}</div>
