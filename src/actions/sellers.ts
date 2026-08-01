@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/actions/admin";
 import { hashPin } from "@/lib/auth";
@@ -53,6 +54,36 @@ export async function renewSellerPin(sellerId: string): Promise<SellerResult> {
   revalidatePath("/panel/vendedores");
   revalidatePath("/panel", "layout");
   return { ok: true, id: sellerId, pin };
+}
+
+/**
+ * Borra un vendedor, solo si no tiene historial. Uno que ya operó sostiene los
+ * cálculos del negocio (asignaciones, cortes, pagos): borrarlo dejaría esos
+ * registros apuntando a nadie y descuadraría los reportes. Para ese caso está
+ * el interruptor de "activo", que le corta el acceso y lo conserva.
+ */
+export async function deleteSeller(formData: FormData): Promise<void> {
+  if (!(await requireAdmin())) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const d = await db();
+  const uso = await d
+    .prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM assignments WHERE seller_id = ?1) AS asignaciones,
+         (SELECT COUNT(*) FROM cortes      WHERE seller_id = ?1) AS cortes,
+         (SELECT COUNT(*) FROM payments    WHERE seller_id = ?1) AS pagos,
+         (SELECT COUNT(*) FROM retiros     WHERE seller_id = ?1) AS retiros,
+         (SELECT COUNT(*) FROM ajustes     WHERE seller_id = ?1) AS ajustes`,
+    )
+    .bind(id)
+    .first<Record<string, number>>();
+  const historial = Object.values(uso ?? {}).reduce((s, n) => s + Number(n ?? 0), 0);
+  if (historial > 0) redirect(`/panel/vendedores/${id}?error=historial`);
+
+  await d.prepare("DELETE FROM sellers WHERE id = ?1").bind(id).run();
+  revalidatePath("/panel", "layout");
+  redirect("/panel/vendedores");
 }
 
 export async function updateSeller(_prev: SellerResult, formData: FormData): Promise<SellerResult> {

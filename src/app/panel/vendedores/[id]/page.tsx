@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Fragment } from "react";
 
 import { deleteCorte, deleteSale } from "@/actions/negocio";
+import { deleteSeller } from "@/actions/sellers";
 import { CorteForm } from "@/components/corte-form";
 import { RenewPinButton } from "@/components/renew-pin-button";
 import { AjusteForm, PaymentForm, RetiroForm, SaleForm, SellerEditForm } from "@/components/seller-forms";
@@ -20,10 +21,25 @@ import { getSeller, loadSnapshot } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
 
-export default async function VendedorPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function VendedorPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
   const { id } = await params;
+  const { error } = await searchParams;
   const [seller, snap] = await Promise.all([getSeller(id), loadSnapshot()]);
   if (!seller) notFound();
+
+  // Solo se puede borrar un vendedor sin historial: el que ya operó se desactiva.
+  const historial =
+    snap.assignments.filter((a) => a.seller_id === id).length +
+    snap.cortes.filter((c) => c.seller_id === id).length +
+    snap.payments.filter((p) => p.seller_id === id).length +
+    snap.retiros.filter((r) => r.seller_id === id).length +
+    snap.ajustes.filter((a) => a.seller_id === id).length;
 
   const lines = lineStates(snap);
   const sl = sellerLinesOf(snap, id, lines);
@@ -361,6 +377,42 @@ export default async function VendedorPage({ params }: { params: Promise<{ id: s
         </div>
         <div className="mt-4">
           <RenewPinButton sellerId={id} />
+        </div>
+      </section>
+
+      <section className="glass card">
+        <div className="card-h">
+          <div>
+            <h3>Eliminar vendedor</h3>
+            <div className="sub">Solo si nunca llegó a operar</div>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-col gap-3">
+          {error === "historial" && (
+            <p className="notice" role="alert">
+              No se pudo eliminar: entre que se abrió esta página y pulsaste, al vendedor le quedó historial.
+            </p>
+          )}
+          {historial > 0 ? (
+            <p className="text-sm dim">
+              <b>{seller.nombre}</b> ya tiene movimientos registrados ({qty(historial)} entre asignaciones,
+              cortes, pagos, recogidas y ajustes), y de ellos dependen los reportes del negocio. Para que deje
+              de entrar y reportar, desmarca <b>Vendedor activo</b> ahí arriba: se queda en la lista pero sin
+              acceso.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm dim">
+                Este vendedor no tiene ningún movimiento, así que se puede borrar sin afectar a nada.
+              </p>
+              <form action={deleteSeller}>
+                <input type="hidden" name="id" value={seller.id} />
+                <button className="btn btn-danger" type="submit">
+                  Eliminar a {seller.nombre}
+                </button>
+              </form>
+            </>
+          )}
         </div>
       </section>
     </>
