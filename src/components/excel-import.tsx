@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { importProducts, importPurchases } from "@/actions/catalogo";
 import { type ParsedBook, parseProducts, parsePurchases, readFile } from "@/lib/parse";
 
-type SubmitResult = { error?: string; ok?: boolean; count?: number; errors?: string[] };
+type SubmitResult = { error?: string; ok?: boolean; count?: number; updated?: number; errors?: string[] };
 
 /**
  * Importación masiva desde Excel. Recibe solo props serializables: el parser y
@@ -137,7 +137,8 @@ export function ExcelDrop({
       )}
       {result?.ok && (
         <p className="notice" role="status">
-          <b>{result.count}</b> registros importados.
+          <b>{result.count}</b> registros nuevos.
+          {result.updated ? ` ${result.updated} ya existían y se actualizaron.` : ""}
           {result.errors?.length
             ? " Se omitieron: " +
               result.errors.slice(0, 3).join(" · ") +

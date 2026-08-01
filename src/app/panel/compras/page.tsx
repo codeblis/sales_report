@@ -6,7 +6,8 @@ import { listProducts, loadSnapshot } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
 
-export default async function ComprasPage() {
+export default async function ComprasPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
   const [snap, products] = await Promise.all([loadSnapshot(), listProducts()]);
   const compras = [...snap.purchases].sort((a, b) => b.fecha.localeCompare(a.fecha));
 
@@ -19,6 +20,12 @@ export default async function ComprasPage() {
             <div className="sub">Lotes de mercancía con su costo unitario</div>
           </div>
         </div>
+        {error && (
+          <p className="notice" role="alert">
+            No se puede eliminar esa compra: de <b>{error}</b> ya salió mercancía del almacén hacia los
+            vendedores. Recoge o ajusta esas unidades antes de borrarla.
+          </p>
+        )}
         <div className="tscroll">
           <table>
             <thead>

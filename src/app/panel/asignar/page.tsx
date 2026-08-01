@@ -6,7 +6,8 @@ import { listProducts, listSellers, loadSnapshot } from "@/lib/repo";
 
 export const dynamic = "force-dynamic";
 
-export default async function AsignarPage() {
+export default async function AsignarPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
   const [snap, products, sellers] = await Promise.all([loadSnapshot(), listProducts(), listSellers()]);
   const activos = sellers.filter((s) => s.activo);
   const bySeller = new Map(snap.sellers.map((s) => [s.id, s.nombre]));
@@ -41,6 +42,12 @@ export default async function AsignarPage() {
             <div className="sub">Solo se pueden eliminar si no tienen ventas</div>
           </div>
         </div>
+        {error === "ventas" && (
+          <p className="notice" role="alert">
+            No se pudo eliminar la asignación: el vendedor ya reportó ventas sobre ella. Borra primero esas
+            ventas si de verdad quieres deshacerla.
+          </p>
+        )}
         <div className="tscroll">
           <table>
             <thead>

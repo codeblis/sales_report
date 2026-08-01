@@ -1,13 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/actions/admin";
-import { avgCosto } from "@/lib/calculos";
+import { avgCosto, warehouseLines } from "@/lib/calculos";
 import { db, newId } from "@/lib/db";
 import { loadSnapshot } from "@/lib/repo";
 
-export type MutResult = { error?: string; ok?: boolean; count?: number };
+export type MutResult = { error?: string; ok?: boolean; count?: number; updated?: number };
 
 /* ============================================================
    PRODUCTOS
@@ -76,35 +77,63 @@ export async function importProducts(
   }
   const errors: string[] = [];
   let count = 0;
+  let updated = 0;
   const d = await db();
+
+  // Reimportar el mismo archivo no debe duplicar el catálogo: se empareja por
+  // código y, si no lo hay, por nombre. Lo que ya existe se actualiza.
+  const existentes = await d
+    .prepare("SELECT id, codigo, nombre FROM products")
+    .all<{ id: string; codigo: string; nombre: string }>();
+  const porCodigo = new Map<string, string>();
+  const porNombre = new Map<string, string>();
+  for (const p of existentes.results) {
+    if (p.codigo) porCodigo.set(p.codigo.toLowerCase(), p.id);
+    porNombre.set(p.nombre.toLowerCase(), p.id);
+  }
+
   for (const r of rows) {
     const nombre = String(r.nombre ?? "").trim();
     if (!nombre) {
       errors.push("Fila sin nombre de producto.");
       continue;
     }
+    const codigo = String(r.codigo ?? "").trim();
+    const categoria = String(r.categoria ?? "").trim();
+    const costo = r.costo ?? 0;
+    const precio = r.precio ?? 0;
+    const yaExiste =
+      (codigo ? porCodigo.get(codigo.toLowerCase()) : undefined) ?? porNombre.get(nombre.toLowerCase());
     try {
-      await d
-        .prepare(
-          "INSERT INTO products (id, codigo, nombre, categoria, costo, precio) VALUES (?1,?2,?3,?4,?5,?6)",
-        )
-        .bind(
-          newId(),
-          String(r.codigo ?? "").trim(),
-          nombre,
-          String(r.categoria ?? "").trim(),
-          r.costo ?? 0,
-          r.precio ?? 0,
-        )
-        .run();
-      count++;
+      if (yaExiste) {
+        await d
+          .prepare(
+            "UPDATE products SET codigo = ?1, nombre = ?2, categoria = ?3, costo = ?4, precio = ?5 WHERE id = ?6",
+          )
+          .bind(codigo, nombre, categoria, costo, precio, yaExiste)
+          .run();
+        updated++;
+      } else {
+        const id = newId();
+        await d
+          .prepare(
+            "INSERT INTO products (id, codigo, nombre, categoria, costo, precio) VALUES (?1,?2,?3,?4,?5,?6)",
+          )
+          .bind(id, codigo, nombre, categoria, costo, precio)
+          .run();
+        // Se registra al vuelo para que un archivo con la fila repetida
+        // tampoco cree dos productos.
+        if (codigo) porCodigo.set(codigo.toLowerCase(), id);
+        porNombre.set(nombre.toLowerCase(), id);
+        count++;
+      }
     } catch (e) {
       errors.push(`${nombre}: ${String(e)}`);
     }
   }
   revalidatePath("/panel/mercancia");
   revalidatePath("/panel", "layout");
-  return { ok: true, count, errors };
+  return { ok: true, count, updated, errors };
 }
 
 /* ============================================================
@@ -205,11 +234,28 @@ export async function deletePurchase(formData: FormData): Promise<void> {
   if (!(await requireAdmin())) return;
   const id = String(formData.get("id") ?? "");
   if (!id) return;
+  const snap = await loadSnapshot();
+  const compra = snap.purchases.find((p) => p.id === id);
+  if (!compra) return;
+
+  // Borrar la compra retira esas unidades del almacén. Si ya salieron hacia los
+  // vendedores, el stock quedaría en negativo: se avisa en vez de descuadrarlo.
+  const enAlmacen = new Map(warehouseLines(snap).map((w) => [w.productId, w.almacen]));
+  const nombreDe = new Map(snap.products.map((p) => [p.id, p.nombre]));
+  for (const it of compra.items) {
+    if ((enAlmacen.get(it.product_id) ?? 0) < it.cantidad) {
+      redirect(`/panel/compras?error=${encodeURIComponent(nombreDe.get(it.product_id) ?? "?")}`);
+    }
+  }
+
   const d = await db();
-  await d.prepare("DELETE FROM purchase_items WHERE purchase_id = ?1").bind(id).run();
-  await d.prepare("DELETE FROM purchases WHERE id = ?1").bind(id).run();
-  revalidatePath("/panel/compras");
+  await d.batch([
+    d.prepare("DELETE FROM purchase_items WHERE purchase_id = ?1").bind(id),
+    d.prepare("DELETE FROM purchases WHERE id = ?1").bind(id),
+  ]);
   revalidatePath("/panel", "layout");
+  // Sin la ruta limpia, un aviso de un intento anterior seguiría en pantalla.
+  redirect("/panel/compras");
 }
 
 /* ============================================================
@@ -268,8 +314,13 @@ export async function deleteAssignment(formData: FormData): Promise<void> {
     .prepare("SELECT COUNT(*) AS n FROM sales WHERE assignment_id = ?1")
     .bind(id)
     .first<{ n: number }>();
-  if ((sales?.n ?? 0) > 0) return;
-  await d.prepare("DELETE FROM assignment_items WHERE assignment_id = ?1").bind(id).run();
-  await d.prepare("DELETE FROM assignments WHERE id = ?1").bind(id).run();
+  // La página ya esconde el botón cuando hay ventas, pero el vendedor puede
+  // reportar una entre que se pinta y se pulsa: hay que decir por qué no se borra.
+  if ((sales?.n ?? 0) > 0) redirect("/panel/asignar?error=ventas");
+  await d.batch([
+    d.prepare("DELETE FROM assignment_items WHERE assignment_id = ?1").bind(id),
+    d.prepare("DELETE FROM assignments WHERE id = ?1").bind(id),
+  ]);
   revalidatePath("/panel", "layout");
+  redirect("/panel/asignar");
 }
