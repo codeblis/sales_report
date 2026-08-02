@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Fragment } from "react";
 
-import { deleteCorte, deleteSale } from "@/actions/negocio";
+import { deleteAjuste, deleteCorte, deleteSale } from "@/actions/negocio";
 import { deleteSeller } from "@/actions/sellers";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { CorteForm } from "@/components/corte-form";
@@ -345,6 +345,25 @@ export default async function VendedorPage({
                               {m.desc}
                               {m.producto ? ` · ${m.producto}` : ""} del {m.fecha}. La mercancía vuelve a
                               contar en manos de {seller.nombre}.
+                            </>
+                          }
+                        >
+                          ×
+                        </ConfirmSubmit>
+                      </form>
+                    )}
+                    {m.kind === "ajuste" && (
+                      <form action={deleteAjuste}>
+                        <input type="hidden" name="id" value={m.id} />
+                        <ConfirmSubmit
+                          title="Eliminar ajuste"
+                          titulo="¿Eliminar este ajuste de merma?"
+                          detalle={
+                            <>
+                              {m.desc}
+                              {m.producto ? ` · ${m.producto}` : ""} del {m.fecha}. Las{" "}
+                              <b>{m.cantidad != null ? qty(m.cantidad) : "?"}</b> unidades volverán a contar
+                              como mercancía en manos de {seller.nombre}.
                             </>
                           }
                         >
