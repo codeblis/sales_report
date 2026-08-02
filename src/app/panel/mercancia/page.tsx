@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { deleteProduct } from "@/actions/catalogo";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { ExcelDrop } from "@/components/excel-import";
 import { ProductForm } from "@/components/product-form";
 import { money, pct, todayISO } from "@/lib/format";
@@ -79,13 +80,13 @@ export default async function MercanciaPage({
                       {!usados.has(p.id) && (
                         <form action={deleteProduct}>
                           <input type="hidden" name="id" value={p.id} />
-                          <button
-                            className="btn btn-ghost btn-danger"
-                            type="submit"
+                          <ConfirmSubmit
                             title="Eliminar producto (no tiene movimientos)"
+                            titulo={`¿Eliminar ${p.nombre} del catálogo?`}
+                            detalle="No tiene ningún movimiento, así que no afecta a compras ni a ventas. Sale del catálogo y no se puede deshacer."
                           >
                             ×
-                          </button>
+                          </ConfirmSubmit>
                         </form>
                       )}
                     </div>

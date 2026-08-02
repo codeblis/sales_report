@@ -1,4 +1,5 @@
 import { deletePurchase } from "@/actions/catalogo";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { ExcelDrop } from "@/components/excel-import";
 import { PurchaseForm } from "@/components/purchase-assignment-forms";
 import { money, qty, todayISO } from "@/lib/format";
@@ -52,9 +53,18 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
                     <td className="no-print">
                       <form action={deletePurchase}>
                         <input type="hidden" name="id" value={c.id} />
-                        <button className="btn btn-ghost btn-danger" type="submit" title="Eliminar compra">
+                        <ConfirmSubmit
+                          title="Eliminar compra"
+                          titulo={`¿Eliminar la compra del ${c.fecha}?`}
+                          detalle={
+                            <>
+                              Son <b>{qty(unidades)}</b> unidades por <b>{money(valor)}</b>. Saldrán del
+                              almacén y el costo promedio se recalculará sin ellas.
+                            </>
+                          }
+                        >
                           ×
-                        </button>
+                        </ConfirmSubmit>
                       </form>
                     </td>
                   </tr>

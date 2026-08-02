@@ -1,4 +1,5 @@
 import { deleteSale } from "@/actions/negocio";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { lineStates, pendingSales } from "@/lib/calculos";
 import { money, qty } from "@/lib/format";
 import { listSellers, loadSnapshot } from "@/lib/repo";
@@ -108,9 +109,18 @@ export default async function VentasPage({
                       {!v.corte_id && (
                         <form action={deleteSale}>
                           <input type="hidden" name="id" value={v.id} />
-                          <button className="btn btn-ghost btn-danger" type="submit" title="Eliminar venta">
+                          <ConfirmSubmit
+                            title="Eliminar venta"
+                            titulo="¿Eliminar esta venta?"
+                            detalle={
+                              <>
+                                <b>{qty(v.cantidad)}</b> uds de <b>{byProduct.get(v.product_id) ?? "?"}</b>{" "}
+                                del {v.fecha}. La mercancía vuelve a contar en manos del vendedor.
+                              </>
+                            }
+                          >
                             ×
-                          </button>
+                          </ConfirmSubmit>
                         </form>
                       )}
                     </td>

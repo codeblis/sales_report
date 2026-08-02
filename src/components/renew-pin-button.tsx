@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { renewSellerPin } from "@/actions/sellers";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 
 export function RenewPinButton({ sellerId, compact = false }: { sellerId: string; compact?: boolean }) {
   const [state, formAction, pending] = useActionState(
@@ -13,9 +14,15 @@ export function RenewPinButton({ sellerId, compact = false }: { sellerId: string
   return (
     <div className="flex flex-col gap-2">
       <form action={formAction}>
-        <button className={compact ? "btn btn-ghost" : "btn"} type="submit" disabled={pending}>
+        <ConfirmSubmit
+          className={compact ? "btn btn-ghost" : "btn"}
+          titulo="¿Generar un PIN nuevo?"
+          detalle="El PIN actual dejará de funcionar de inmediato. Tendrás que comunicarle el nuevo al vendedor o se quedará sin poder entrar."
+          confirmar="Sí, generar"
+          disabled={pending}
+        >
           {compact ? "Renovar PIN" : "Renovar PIN del vendedor"}
-        </button>
+        </ConfirmSubmit>
       </form>
       {state?.error && (
         <p className="notice" role="alert" style={{ marginBottom: 0 }}>

@@ -669,6 +669,44 @@ tfoot td.lbl {
   color: var(--ink-3);
   font-size: 0.85rem;
 }
+
+/* ---------- Confirmación antes de modificar o borrar ---------- */
+.confirm {
+  margin: auto;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 22px 24px;
+  border: 1px solid var(--edge);
+  border-radius: 18px;
+  background: var(--sheet);
+  color: var(--ink);
+  box-shadow: var(--drop);
+}
+.confirm::backdrop {
+  background: rgb(0 0 0 / 0.44);
+  backdrop-filter: blur(2px);
+}
+.confirm h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.confirm-detalle {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.confirm-detalle b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.confirm-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
 .empty {
   padding: clamp(34px, 7vw, 84px) clamp(22px, 5vw, 64px);
   text-align: center;

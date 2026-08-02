@@ -1,4 +1,5 @@
 import { deletePayment } from "@/actions/negocio";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { money, qty } from "@/lib/format";
 import { listSellers, loadSnapshot } from "@/lib/repo";
 
@@ -106,9 +107,18 @@ export default async function PagosPage({
                   <td className="no-print">
                     <form action={deletePayment}>
                       <input type="hidden" name="id" value={p.id} />
-                      <button className="btn btn-ghost btn-danger" type="submit" title="Eliminar pago">
+                      <ConfirmSubmit
+                        title="Eliminar pago"
+                        titulo={`¿Eliminar el pago de ${money(p.monto)}?`}
+                        detalle={
+                          <>
+                            Es de <b>{bySeller.get(p.seller_id) ?? "?"}</b>, del {p.fecha}. Su saldo subirá en
+                            ese importe.
+                          </>
+                        }
+                      >
                         ×
-                      </button>
+                      </ConfirmSubmit>
                     </form>
                   </td>
                 </tr>

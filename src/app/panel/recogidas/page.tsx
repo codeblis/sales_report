@@ -1,4 +1,5 @@
 import { deleteRetiro } from "@/actions/negocio";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { money, qty } from "@/lib/format";
 import { listSellers, loadSnapshot } from "@/lib/repo";
 
@@ -81,9 +82,19 @@ export default async function RecogidasPage({
                   <td className="no-print">
                     <form action={deleteRetiro}>
                       <input type="hidden" name="id" value={r.id} />
-                      <button className="btn btn-ghost btn-danger" type="submit" title="Eliminar recogida">
+                      <ConfirmSubmit
+                        title="Eliminar recogida"
+                        titulo={`¿Eliminar la recogida del ${r.fecha}?`}
+                        detalle={
+                          <>
+                            Son <b>{qty(r.items.reduce((s, i) => s + i.cantidad, 0))}</b> unidades de{" "}
+                            <b>{bySeller.get(r.seller_id) ?? "?"}</b>. Volverán a contar como mercancía en su
+                            poder.
+                          </>
+                        }
+                      >
                         ×
-                      </button>
+                      </ConfirmSubmit>
                     </form>
                   </td>
                 </tr>

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import { changeAdminPin, updateSettings } from "@/actions/admin";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 
 export function MonedaForm({ simbolo, codigo }: { simbolo: string; codigo: string }) {
   const [state, formAction, pending] = useActionState(updateSettings, {});
@@ -44,9 +45,16 @@ export function MonedaForm({ simbolo, codigo }: { simbolo: string; codigo: strin
         </p>
       )}
       <div>
-        <button className="btn btn-solid" type="submit" disabled={pending}>
+        <ConfirmSubmit
+          className="btn btn-solid"
+          titulo="¿Cambiar la moneda?"
+          detalle="Cambia el símbolo en toda la app, en los reportes y en el portal de los vendedores. No convierte ningún importe: las cifras guardadas se quedan como están."
+          confirmar="Sí, cambiar"
+          peligro={false}
+          disabled={pending}
+        >
           Guardar moneda
-        </button>
+        </ConfirmSubmit>
       </div>
     </form>
   );
@@ -111,9 +119,15 @@ export function PinFormAdmin() {
         </p>
       )}
       <div>
-        <button className="btn btn-solid" type="submit" disabled={pending}>
+        <ConfirmSubmit
+          className="btn btn-solid"
+          titulo="¿Cambiar tu PIN de administrador?"
+          detalle="El PIN actual dejará de servir en cuanto se guarde. Si olvidas el nuevo, no hay forma de recuperar el acceso."
+          confirmar="Sí, cambiarlo"
+          disabled={pending}
+        >
           Cambiar PIN
-        </button>
+        </ConfirmSubmit>
       </div>
     </form>
   );

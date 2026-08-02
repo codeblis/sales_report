@@ -1,4 +1,5 @@
 import { deleteGasto } from "@/actions/negocio";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { ExportBar } from "@/components/export-bar";
 import { GastoForm } from "@/components/gasto-form";
 import { globalMetrics } from "@/lib/calculos";
@@ -115,9 +116,17 @@ export default async function GastosPage({
                   <td className="no-print">
                     <form action={deleteGasto}>
                       <input type="hidden" name="id" value={x.id} />
-                      <button className="btn btn-ghost btn-danger" type="submit" title="Eliminar gasto">
+                      <ConfirmSubmit
+                        title="Eliminar gasto"
+                        titulo={`¿Eliminar el gasto de ${money(x.monto)}?`}
+                        detalle={
+                          <>
+                            <b>{x.concepto}</b>, del {x.fecha}. La ganancia neta subirá en ese importe.
+                          </>
+                        }
+                      >
                         ×
-                      </button>
+                      </ConfirmSubmit>
                     </form>
                   </td>
                 </tr>

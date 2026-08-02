@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createProduct, updateProduct } from "@/actions/catalogo";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 
 export function ProductForm({
   product,
@@ -76,9 +77,22 @@ export function ProductForm({
         </p>
       )}
       <div>
-        <button className="btn btn-solid" type="submit" disabled={pending}>
-          {product ? "Guardar cambios" : "Crear producto"}
-        </button>
+        {product ? (
+          <ConfirmSubmit
+            className="btn btn-solid"
+            titulo={`¿Guardar los cambios de ${product.nombre}?`}
+            detalle="El precio y el costo nuevos valen para lo que asignes a partir de ahora; lo ya asignado conserva el precio que tenía."
+            confirmar="Sí, guardar"
+            peligro={false}
+            disabled={pending}
+          >
+            Guardar cambios
+          </ConfirmSubmit>
+        ) : (
+          <button className="btn btn-solid" type="submit" disabled={pending}>
+            Crear producto
+          </button>
+        )}
       </div>
     </form>
   );

@@ -4,6 +4,7 @@ import { Fragment } from "react";
 
 import { deleteCorte, deleteSale } from "@/actions/negocio";
 import { deleteSeller } from "@/actions/sellers";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { CorteForm } from "@/components/corte-form";
 import { RenewPinButton } from "@/components/renew-pin-button";
 import { AjusteForm, PaymentForm, RetiroForm, SaleForm, SellerEditForm } from "@/components/seller-forms";
@@ -208,9 +209,18 @@ export default async function VendedorPage({
                     <td className="no-print">
                       <form action={deleteCorte}>
                         <input type="hidden" name="id" value={c.id} />
-                        <button className="btn btn-ghost btn-danger" type="submit" title="Eliminar corte">
+                        <ConfirmSubmit
+                          title="Eliminar corte"
+                          titulo={`¿Eliminar el corte del ${c.fecha}?`}
+                          detalle={
+                            <>
+                              Son <b>{money(c.importe)}</b> liquidados. Las ventas que incluye volverán a
+                              quedar pendientes de cortar y el saldo de {seller.nombre} cambiará.
+                            </>
+                          }
+                        >
                           ×
-                        </button>
+                        </ConfirmSubmit>
                       </form>
                     </td>
                   </tr>
@@ -327,9 +337,19 @@ export default async function VendedorPage({
                     {m.kind === "venta" && (
                       <form action={deleteSale}>
                         <input type="hidden" name="id" value={m.id} />
-                        <button className="btn btn-ghost btn-danger" type="submit" title="Eliminar venta">
+                        <ConfirmSubmit
+                          title="Eliminar venta"
+                          titulo="¿Eliminar esta venta?"
+                          detalle={
+                            <>
+                              {m.desc}
+                              {m.producto ? ` · ${m.producto}` : ""} del {m.fecha}. La mercancía vuelve a
+                              contar en manos de {seller.nombre}.
+                            </>
+                          }
+                        >
                           ×
-                        </button>
+                        </ConfirmSubmit>
                       </form>
                     )}
                   </td>
@@ -407,9 +427,14 @@ export default async function VendedorPage({
               </p>
               <form action={deleteSeller}>
                 <input type="hidden" name="id" value={seller.id} />
-                <button className="btn btn-danger" type="submit">
+                <ConfirmSubmit
+                  className="btn btn-danger"
+                  titulo={`¿Eliminar a ${seller.nombre}?`}
+                  detalle="No tiene ningún movimiento, así que no afecta a los reportes. Desaparece de la lista y su enlace deja de servir. No se puede deshacer."
+                  confirmar={`Sí, eliminar a ${seller.nombre}`}
+                >
                   Eliminar a {seller.nombre}
-                </button>
+                </ConfirmSubmit>
               </form>
             </>
           )}

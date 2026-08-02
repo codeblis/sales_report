@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { deleteAssignment } from "@/actions/catalogo";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { AssignmentForm } from "@/components/purchase-assignment-forms";
 import { money, qty, todayISO } from "@/lib/format";
 import { listProducts, listSellers, loadSnapshot } from "@/lib/repo";
@@ -82,13 +83,18 @@ export default async function AsignarPage({ searchParams }: { searchParams: Prom
                       {!conVentas && (
                         <form action={deleteAssignment}>
                           <input type="hidden" name="id" value={a.id} />
-                          <button
-                            className="btn btn-ghost btn-danger"
-                            type="submit"
+                          <ConfirmSubmit
                             title="Eliminar asignación"
+                            titulo={`¿Eliminar la asignación del ${a.fecha}?`}
+                            detalle={
+                              <>
+                                Son <b>{qty(unidades)}</b> unidades de{" "}
+                                <b>{bySeller.get(a.seller_id) ?? "?"}</b>. Volverán al almacén.
+                              </>
+                            }
                           >
                             ×
-                          </button>
+                          </ConfirmSubmit>
                         </form>
                       )}
                     </td>

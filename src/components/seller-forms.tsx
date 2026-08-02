@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createAjuste, createPayment, createRetiro, createSale } from "@/actions/negocio";
 import { updateSeller } from "@/actions/sellers";
+import { ConfirmSubmit } from "@/components/confirm-submit";
 import { useCurrency } from "@/components/currency";
 
 export type LineOption = { productId: string; product: string; enMano: number; precio: number };
@@ -347,9 +348,16 @@ export function SellerEditForm({
         </div>
       </div>
       <div>
-        <button className="btn" type="submit" disabled={pending}>
+        <ConfirmSubmit
+          className="btn"
+          titulo={`¿Guardar los cambios de ${seller.nombre}?`}
+          detalle="Se aplican al momento. Si le quitas el acceso, dejará de poder entrar a reportar."
+          confirmar="Sí, guardar"
+          peligro={false}
+          disabled={pending}
+        >
           Guardar
-        </button>
+        </ConfirmSubmit>
       </div>
     </form>
   );
