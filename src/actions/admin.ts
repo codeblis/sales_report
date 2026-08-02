@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import {
   ADMIN_COOKIE,
   checkAdminToken,
+  checkSetupToken,
   clientIp,
   hashPin,
   makeAdminToken,
@@ -40,6 +41,27 @@ export async function createAdminPin(
   formData: FormData,
 ): Promise<{ error?: string }> {
   if (await hasAdminPin()) return { error: "El PIN de administrador ya está creado." };
+
+  // Se limita igual que el login: aquí también se comprueba una credencial.
+  const h = await headers();
+  const ip = clientIp(h);
+  if (await tooManyAttempts(ip)) {
+    return { error: "Demasiados intentos. Espera 15 minutos y vuelve a intentar." };
+  }
+
+  const token = String(formData.get("setup_token") ?? "").trim();
+  const setup = await checkSetupToken(token);
+  if (setup.sinConfigurar) {
+    return {
+      error:
+        "Falta configurar SETUP_TOKEN. Ponlo con `wrangler secret put SETUP_TOKEN` y vuelve a cargar esta página.",
+    };
+  }
+  if (!setup.ok) {
+    await recordAttempt(ip);
+    return { error: "Token de instalación incorrecto." };
+  }
+
   const pin = String(formData.get("pin") ?? "").trim();
   const pin2 = String(formData.get("pin2") ?? "").trim();
   if (!PIN_RE.test(pin)) return { error: "El PIN tiene que tener entre 4 y 6 dígitos." };

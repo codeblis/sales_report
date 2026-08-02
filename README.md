@@ -1,33 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Reportes de Ventas
 
-## Getting Started
+Panel para distribuidores: compras, asignaciones a vendedores, cortes de venta,
+cobros e inventario. Cada vendedor entra por su propio enlace con un PIN y
+reporta sus ventas.
 
-First, run the development server:
+Next.js sobre Cloudflare Workers, con D1 de base de datos.
+
+## Desarrollo
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Este proyecto usa **pnpm**. No uses `npm` ni `yarn`: el lockfile es `pnpm-lock.yaml`.
+Este proyecto usa **pnpm**. No uses `npm` ni `yarn`: el lockfile es
+`pnpm-lock.yaml` y un `preinstall` corta cualquier otro gestor.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Copia `.dev.vars.example` a `.dev.vars` antes de arrancar. Para abrir la app
+desde el móvil, usa la URL "Network" que imprime `next dev`: las IP de la
+máquina se autorizan solas en `next.config.ts`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm test        # pruebas de los cálculos del negocio
+pnpm typecheck
+pnpm lint
+pnpm build       # build de Cloudflare (OpenNext)
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Acceso de administrador
 
-## Learn More
+El PIN se guarda hasheado con HMAC, usando `AUTH_SECRET` como clave. Dos cosas
+que conviene tener claras **antes** de desplegar:
 
-To learn more about Next.js, take a look at the following resources:
+**El primer arranque pide un `SETUP_TOKEN`.** Sin él nadie puede crear el PIN de
+administrador, ni siquiera quien dé con la URL antes que tú. Ponlo una vez:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+wrangler secret put SETUP_TOKEN     # inventa un valor y guárdalo donde tus contraseñas
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Al entrar por primera vez tecleas ese token y tu PIN. No se vuelve a pedir.
 
-## Deploy on Vercel
+**Si olvidas el PIN**, el rescate borra solo el hash del admin y devuelve la app
+a la pantalla de primer arranque:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm pin:reset              # base remota
+pnpm pin:reset --local      # base de desarrollo
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+No toca `AUTH_SECRET`, así que **los PIN de los vendedores siguen funcionando**.
+Rotar ese secreto sí los invalidaría todos de golpe, y no habría vuelta atrás.
+
+Ojo: el rescate no cierra las sesiones ya abiertas — la cookie de admin vale 30
+días por su cuenta. Si lo que quieres es echar a alguien, cambia el PIN desde
+Ajustes y borra la cookie.
+
+## Respaldo
+
+**Ajustes → Respaldo** descarga un JSON con todo y permite restaurarlo.
+
+Además, D1 guarda un histórico propio (**Time Travel**) que permite volver a un
+punto anterior sin depender de esos respaldos:
+
+```bash
+wrangler d1 time-travel info reportes-d1                    # bookmark actual
+wrangler d1 time-travel restore reportes-d1 --bookmark=...  # volver a ese punto
+```
+
+Restaura la base entera, no una fila suelta, y su ventana es limitada: sirve
+para el borrado accidental, no como archivo a largo plazo.
+
+## Base de datos
+
+```bash
+pnpm db:migrate:local
+pnpm db:migrate:remote
+```

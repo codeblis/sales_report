@@ -14,6 +14,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit",
+    "pin:reset": "node scripts/reset-pin-admin.mjs",
     "db:migrate:local": "wrangler d1 migrations apply reportes-d1 --local",
     "db:migrate:remote": "wrangler d1 migrations apply reportes-d1 --remote",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",

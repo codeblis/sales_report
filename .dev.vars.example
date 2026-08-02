@@ -1,1 +1,6 @@
 AUTH_SECRET=dev-secret-change-me
+
+# Se teclea al crear el PIN de administrador la primera vez. Sin esto nadie
+# puede reclamar el panel, ni al desplegar ni después de un `pnpm pin:reset`.
+# En producción va como secreto: wrangler secret put SETUP_TOKEN
+SETUP_TOKEN=setup-dev

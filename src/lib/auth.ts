@@ -29,13 +29,32 @@ export async function hashPin(pin: string): Promise<string> {
   return hmacHex(pin, key);
 }
 
+/** Compara sin delatar por el reloj cuántos caracteres coincidían. */
+function igualSinFiltrar(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function verifyPin(pin: string, hash: string): Promise<boolean> {
   const key = `${await secret()}:pin`;
-  const computed = await hmacHex(pin, key);
-  if (computed.length !== hash.length) return false;
-  let diff = 0;
-  for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ hash.charCodeAt(i);
-  return diff === 0;
+  return igualSinFiltrar(await hmacHex(pin, key), hash);
+}
+
+/**
+ * Token del primer arranque. Sin él, quien primero llegue a la URL se queda con
+ * el panel, porque crear el PIN de administrador solo exige que no exista otro.
+ *
+ * Si no está configurado se responde `sinConfigurar` y no se deja crear nada:
+ * más vale un despliegue que no arranca —con un mensaje que dice qué hacer—
+ * que uno que cualquiera puede reclamar. El rescate del PIN (`pnpm pin:reset`)
+ * devuelve la app a este estado, así que esta puerta lo protege también.
+ */
+export async function checkSetupToken(token: string): Promise<{ ok: boolean; sinConfigurar: boolean }> {
+  const esperado = await getSecret("SETUP_TOKEN");
+  if (!esperado) return { ok: false, sinConfigurar: true };
+  return { ok: igualSinFiltrar(token, esperado), sinConfigurar: false };
 }
 
 /** Firma un valor para cookie: `valor.firma`. */

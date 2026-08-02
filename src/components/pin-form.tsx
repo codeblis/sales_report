@@ -7,6 +7,22 @@ export function PinForm({ mode }: { mode: "create" | "login" }) {
   const [state, formAction, pending] = useActionState(mode === "create" ? createAdminPin : loginAdmin, {});
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      {mode === "create" && (
+        <div className="field">
+          <label htmlFor="setup_token">Token de instalación</label>
+          <input
+            className="input"
+            id="setup_token"
+            name="setup_token"
+            type="password"
+            autoComplete="off"
+            required
+          />
+          <p className="text-sm dim">
+            El que guardaste como <b>SETUP_TOKEN</b> en Cloudflare. Solo se pide ahora.
+          </p>
+        </div>
+      )}
       <div className="field">
         <label htmlFor="pin">PIN</label>
         <input
