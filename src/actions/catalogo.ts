@@ -188,9 +188,13 @@ export async function createPurchase(
     items.push({ productId: m[1], cantidad, costo });
   }
   if (!fecha || !items.length) return { error: "Faltan datos de la compra." };
+  const ubicacion = String(formData.get("ubicacion") ?? "eeuu") === "cuba" ? "cuba" : "eeuu";
   const d = await db();
   const id = newId();
-  await d.prepare("INSERT INTO purchases (id, fecha, nota) VALUES (?1,?2,?3)").bind(id, fecha, nota).run();
+  await d
+    .prepare("INSERT INTO purchases (id, fecha, nota, ubicacion) VALUES (?1,?2,?3,?4)")
+    .bind(id, fecha, nota, ubicacion)
+    .run();
   for (const it of items) {
     await d
       .prepare("INSERT INTO purchase_items (purchase_id, product_id, cantidad, costo) VALUES (?1,?2,?3,?4)")
@@ -200,6 +204,103 @@ export async function createPurchase(
   revalidatePath("/panel/compras");
   revalidatePath("/panel", "layout");
   return { ok: true };
+}
+
+/**
+ * Confirma una importación que traía cantidades: da de alta el catálogo y, en
+ * la misma pasada, registra la compra que mete esa mercancía en el almacén.
+ *
+ * Va junto a propósito. Importar una hoja con cantidades y que el almacén siga
+ * a cero es lo que hizo que se asignara mercancía inexistente: el catálogo por
+ * sí solo no es existencias. Las líneas llegan ya revisadas y editadas por el
+ * distribuidor, no crudas del archivo.
+ */
+export async function confirmImportedPurchase(_prev: MutResult, formData: FormData): Promise<MutResult> {
+  if (!(await requireAdmin())) return { error: "Sesión inválida." };
+  const fecha = String(formData.get("fecha") ?? "").trim();
+  const nota = String(formData.get("nota") ?? "").trim();
+  const ubicacion = String(formData.get("ubicacion") ?? "eeuu") === "cuba" ? "cuba" : "eeuu";
+  if (!fecha) return { error: "Falta la fecha de la compra." };
+
+  let rows: {
+    codigo?: string;
+    nombre?: string;
+    categoria?: string;
+    costo?: number;
+    precio?: number;
+    cantidad?: number;
+  }[];
+  try {
+    rows = JSON.parse(String(formData.get("rows") ?? ""));
+  } catch {
+    return { error: "Datos del archivo inválidos." };
+  }
+  const lineas = rows.filter((r) => String(r.nombre ?? "").trim() && (r.cantidad ?? 0) > 0);
+  if (!lineas.length) return { error: "No hay ninguna línea con cantidad mayor que cero." };
+
+  const d = await db();
+  const existentes = await d
+    .prepare("SELECT id, codigo, nombre FROM products")
+    .all<{ id: string; codigo: string; nombre: string }>();
+  const porCodigo = new Map<string, string>();
+  const porNombre = new Map<string, string>();
+  for (const p of existentes.results) {
+    if (p.codigo) porCodigo.set(p.codigo.toLowerCase(), p.id);
+    porNombre.set(p.nombre.toLowerCase(), p.id);
+  }
+
+  // Una misma hoja puede repetir un producto en varias filas; la clave de
+  // purchase_items es (compra, producto), así que se suman antes de insertar.
+  const porProducto = new Map<string, { cantidad: number; costo: number }>();
+  let nuevos = 0;
+  for (const r of lineas) {
+    const nombre = String(r.nombre ?? "").trim();
+    const codigo = String(r.codigo ?? "").trim();
+    const costo = r.costo ?? 0;
+    const precio = r.precio ?? 0;
+    let id =
+      (codigo ? porCodigo.get(codigo.toLowerCase()) : undefined) ?? porNombre.get(nombre.toLowerCase());
+    if (id) {
+      await d
+        .prepare(
+          "UPDATE products SET codigo = ?1, nombre = ?2, categoria = ?3, costo = ?4, precio = ?5 WHERE id = ?6",
+        )
+        .bind(codigo, nombre, String(r.categoria ?? "").trim(), costo, precio, id)
+        .run();
+    } else {
+      id = newId();
+      await d
+        .prepare(
+          "INSERT INTO products (id, codigo, nombre, categoria, costo, precio) VALUES (?1,?2,?3,?4,?5,?6)",
+        )
+        .bind(id, codigo, nombre, String(r.categoria ?? "").trim(), costo, precio)
+        .run();
+      if (codigo) porCodigo.set(codigo.toLowerCase(), id);
+      porNombre.set(nombre.toLowerCase(), id);
+      nuevos++;
+    }
+    const previo = porProducto.get(id);
+    porProducto.set(id, {
+      cantidad: (previo?.cantidad ?? 0) + (r.cantidad ?? 0),
+      costo: costo || previo?.costo || 0,
+    });
+  }
+
+  const compraId = newId();
+  const stmts = [
+    d
+      .prepare("INSERT INTO purchases (id, fecha, nota, ubicacion) VALUES (?1,?2,?3,?4)")
+      .bind(compraId, fecha, nota, ubicacion),
+    ...[...porProducto.entries()].map(([productId, v]) =>
+      d
+        .prepare("INSERT INTO purchase_items (purchase_id, product_id, cantidad, costo) VALUES (?1,?2,?3,?4)")
+        .bind(compraId, productId, v.cantidad, v.costo),
+    ),
+  ];
+  await d.batch(stmts);
+
+  revalidatePath("/panel", "layout");
+  return { ok: true, count: porProducto.size, updated: nuevos };
 }
 
 export async function importPurchases(

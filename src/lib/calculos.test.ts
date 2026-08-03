@@ -46,10 +46,16 @@ const producto = (id: string, costo = 5, precio = 10): Product => ({
   creado: "2026-01-01",
 });
 
-const compra = (id: string, fecha: string, items: [string, number, number][]) => ({
+const compra = (
+  id: string,
+  fecha: string,
+  items: [string, number, number][],
+  ubicacion: "eeuu" | "cuba" = "eeuu",
+) => ({
   id,
   fecha,
   nota: "",
+  ubicacion,
   items: items.map(([product_id, cantidad, costo]) => ({
     purchase_id: id,
     product_id,

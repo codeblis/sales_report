@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { importProducts, importPurchases } from "@/actions/catalogo";
-import { type ParsedBook, parseProducts, parsePurchases, readFile } from "@/lib/parse";
+import { ImportPurchaseReview } from "@/components/import-purchase-review";
+import { type ParsedBook, type ParsedProduct, parseProducts, parsePurchases, readFile } from "@/lib/parse";
 
 type SubmitResult = { error?: string; ok?: boolean; count?: number; updated?: number; errors?: string[] };
 
@@ -72,6 +73,26 @@ export function ExcelDrop({
   }
 
   const preview = (rows?.[0] as Record<string, unknown> | undefined) ?? null;
+
+  // Una hoja de catálogo que trae cantidades no describe un catálogo: describe
+  // una compra. En vez de importarla a medias y dejar el almacén a cero, se
+  // propone la compra para que el distribuidor la revise.
+  const conCantidades = kind === "productos" && !!rows?.some((r) => ((r as ParsedProduct).cantidad ?? 0) > 0);
+
+  if (rows && conCantidades) {
+    return (
+      <ImportPurchaseReview
+        filas={rows as ParsedProduct[]}
+        hoja={sheetName}
+        fechaDefault={fechaDefault}
+        onCancelar={() => setRows(null)}
+        onHecho={() => {
+          setRows(null);
+          setResult({ ok: true, count: 0 });
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">

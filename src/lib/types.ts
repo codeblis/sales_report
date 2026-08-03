@@ -20,7 +20,10 @@ export type Product = {
   creado: string;
 };
 
-export type Purchase = { id: string; fecha: string; nota: string };
+/** Dónde está físicamente la mercancía. Se compra en cualquiera de los dos. */
+export type Ubicacion = "eeuu" | "cuba";
+
+export type Purchase = { id: string; fecha: string; nota: string; ubicacion: Ubicacion };
 export type PurchaseItem = {
   purchase_id: string;
   product_id: string;

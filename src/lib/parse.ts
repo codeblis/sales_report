@@ -115,6 +115,13 @@ export type ParsedProduct = {
   categoria: string;
   costo: number;
   precio: number;
+  /**
+   * Cantidad, si la hoja la trae. El catálogo no la usa —un producto no tiene
+   * existencias por sí mismo—, pero con ella se puede proponer la compra que
+   * mete esa mercancía en el almacén, que es lo que uno espera al importar una
+   * hoja con cantidades.
+   */
+  cantidad: number;
 };
 
 export function parseProducts(sheet: ParsedBook): ParsedProduct[] {
@@ -126,6 +133,7 @@ export function parseProducts(sheet: ParsedBook): ParsedProduct[] {
   const cats = get(head.map, sheet.rows, head.row, "categoria");
   const costs = get(head.map, sheet.rows, head.row, "costo");
   const prices = get(head.map, sheet.rows, head.row, "precio");
+  const qtys = get(head.map, sheet.rows, head.row, "cantidad");
   for (let i = 0; i < names.length; i++) {
     const nombre = String(names[i] ?? "").trim();
     if (!nombre) continue;
@@ -136,6 +144,7 @@ export function parseProducts(sheet: ParsedBook): ParsedProduct[] {
       categoria: String(cats[i] ?? "").trim(),
       costo: toNum(costs[i]),
       precio: toNum(prices[i]),
+      cantidad: toNum(qtys[i]),
     });
   }
   return out;
