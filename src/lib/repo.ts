@@ -3,10 +3,13 @@ import { db } from "@/lib/db";
 import type {
   Ajuste,
   AjusteItem,
+  Almacen,
   Assignment,
   AssignmentItem,
   Corte,
   CorteItem,
+  Envio,
+  EnvioItem,
   Gasto,
   Payment,
   Product,
@@ -48,6 +51,9 @@ export async function loadSnapshot(): Promise<Snapshot> {
     ajustes,
     ajusteItems,
     gastos,
+    almacenes,
+    envios,
+    envioItems,
   ] = await Promise.all([
     d.prepare("SELECT * FROM sellers").all<Seller>(),
     d.prepare("SELECT * FROM products").all<Product>(),
@@ -64,6 +70,9 @@ export async function loadSnapshot(): Promise<Snapshot> {
     d.prepare("SELECT * FROM ajustes").all<Ajuste>(),
     d.prepare("SELECT * FROM ajuste_items").all<AjusteItem>(),
     d.prepare("SELECT * FROM gastos").all<Gasto>(),
+    d.prepare("SELECT * FROM almacenes").all<Almacen>(),
+    d.prepare("SELECT * FROM envios").all<Envio>(),
+    d.prepare("SELECT * FROM envio_items").all<EnvioItem>(),
   ]);
 
   const byPurchase = groupBy(purchaseItems.results, (i) => i.purchase_id);
@@ -71,6 +80,7 @@ export async function loadSnapshot(): Promise<Snapshot> {
   const byCorte = groupBy(corteItems.results, (i) => i.corte_id);
   const byRetiro = groupBy(retiroItems.results, (i) => i.retiro_id);
   const byAjuste = groupBy(ajusteItems.results, (i) => i.ajuste_id);
+  const byEnvio = groupBy(envioItems.results, (i) => i.envio_id);
 
   return {
     sellers: sellers.results,
@@ -83,6 +93,8 @@ export async function loadSnapshot(): Promise<Snapshot> {
     retiros: retiros.results.map((r) => ({ ...r, items: byRetiro.get(r.id) ?? [] })),
     ajustes: ajustes.results.map((a) => ({ ...a, items: byAjuste.get(a.id) ?? [] })),
     gastos: gastos.results,
+    almacenes: almacenes.results,
+    envios: envios.results.map((e) => ({ ...e, items: byEnvio.get(e.id) ?? [] })),
   };
 }
 

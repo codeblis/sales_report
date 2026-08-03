@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  almacenStock,
   avgCosto,
   globalMetrics,
   lineKey,
@@ -13,6 +14,7 @@ import {
   sellerMovements,
   sellerRanking,
   sellerTotals,
+  stockEnTransito,
   warehouseLines,
   warehouseStock,
 } from "@/lib/calculos";
@@ -56,6 +58,7 @@ const compra = (
   fecha,
   nota: "",
   ubicacion,
+  almacen_id: ubicacion === "cuba" ? "alm-cuba" : "alm-eeuu",
   items: items.map(([product_id, cantidad, costo]) => ({
     purchase_id: id,
     product_id,
@@ -74,6 +77,8 @@ const asignacion = (
   seller_id,
   fecha,
   nota: "",
+  costo_distribucion: 0,
+  almacen_id: "alm-cuba",
   items: items.map(([product_id, cantidad, precio, costo]) => ({
     assignment_id: id,
     product_id,
@@ -118,6 +123,8 @@ const retiro = (
   fecha,
   destino,
   nota: "",
+  costo_distribucion: 0,
+  destino_almacen_id: destino === "almacen" ? "alm-cuba" : null,
   items: items.map(([assignment_id, product_id, cantidad]) => ({
     retiro_id: id,
     assignment_id,
@@ -136,11 +143,39 @@ const ajuste = (
   seller_id,
   fecha,
   nota: "",
+  almacen_id: seller_id === null ? "alm-cuba" : null,
   items: items.map(([assignment_id, product_id, cantidad]) => ({
     ajuste_id: id,
     assignment_id,
     product_id,
     cantidad,
+  })),
+});
+
+const envio = (
+  id: string,
+  origen_id: string,
+  destino_tipo: "almacen" | "vendedor",
+  destino_id: string,
+  fecha: string,
+  items: [string, number, number][],
+  estado: "transito" | "recibido" = "transito",
+  costo = 0,
+) => ({
+  id,
+  fecha,
+  origen_id,
+  destino_tipo,
+  destino_id,
+  costo,
+  nota: "",
+  estado,
+  fecha_llegada: estado === "recibido" ? fecha : null,
+  items: items.map(([product_id, cantidad, precio]) => ({
+    envio_id: id,
+    product_id,
+    cantidad,
+    precio,
   })),
 });
 
@@ -155,6 +190,11 @@ const snapshot = (over: Partial<Snapshot> = {}): Snapshot => ({
   retiros: [],
   ajustes: [],
   gastos: [],
+  almacenes: [
+    { id: "alm-eeuu", nombre: "Almacén de Estados Unidos", pais: "eeuu", activo: 1, creado: "2026-01-01" },
+    { id: "alm-cuba", nombre: "Almacén de Cuba", pais: "cuba", activo: 1, creado: "2026-01-01" },
+  ],
+  envios: [],
   ...over,
 });
 
@@ -444,5 +484,63 @@ describe("sellerMovements", () => {
       payments: [{ id: "pa1", seller_id: "B", corte_id: null, monto: 10, fecha: "2026-02-02", nota: "" }],
     });
     expect(sellerMovements(snap, "A")).toHaveLength(0);
+  });
+});
+
+/* ---------------- Cadena EEUU → Cuba ---------------- */
+
+describe("almacenStock y stockEnTransito", () => {
+  // La compra entra en Miami; nada llega a Cuba hasta que un envío se recibe.
+  const enEeuu = (over = {}) =>
+    snapshot({ purchases: [compra("c1", "2026-01-01", [["p", 100, 5]])], assignments: [], ...over });
+
+  it("la compra se queda en el almacén donde entró", () => {
+    const snap = enEeuu();
+    expect(almacenStock(snap, "alm-eeuu").get("p")).toBe(100);
+    expect(almacenStock(snap, "alm-cuba").get("p")).toBeUndefined();
+  });
+
+  it("un envío en tránsito ya salió de origen pero aún no está en destino", () => {
+    const snap = enEeuu({
+      envios: [envio("e1", "alm-eeuu", "almacen", "alm-cuba", "2026-01-05", [["p", 30, 10]])],
+    });
+    expect(almacenStock(snap, "alm-eeuu").get("p")).toBe(70);
+    expect(almacenStock(snap, "alm-cuba").get("p") ?? 0).toBe(0);
+    expect(stockEnTransito(snap).get("p")).toBe(30);
+  });
+
+  it("al recibirse, la mercancía aterriza en el almacén de destino", () => {
+    const snap = enEeuu({
+      envios: [envio("e1", "alm-eeuu", "almacen", "alm-cuba", "2026-01-05", [["p", 30, 10]], "recibido")],
+    });
+    expect(almacenStock(snap, "alm-eeuu").get("p")).toBe(70);
+    expect(almacenStock(snap, "alm-cuba").get("p")).toBe(30);
+    expect(stockEnTransito(snap).get("p")).toBeUndefined();
+  });
+
+  it("un envío directo a un vendedor no suma a ningún almacén", () => {
+    const snap = enEeuu({
+      envios: [envio("e1", "alm-eeuu", "vendedor", "A", "2026-01-05", [["p", 12, 10]], "recibido")],
+    });
+    expect(almacenStock(snap, "alm-eeuu").get("p")).toBe(88);
+    expect(almacenStock(snap, "alm-cuba").get("p") ?? 0).toBe(0);
+  });
+
+  it("la compra en Cuba se salta el envío", () => {
+    const snap = snapshot({
+      purchases: [compra("c1", "2026-01-01", [["p", 40, 5]], "cuba")],
+      assignments: [],
+    });
+    expect(almacenStock(snap, "alm-cuba").get("p")).toBe(40);
+    expect(almacenStock(snap, "alm-eeuu").get("p")).toBeUndefined();
+  });
+
+  it("asignar descuenta del almacén del que sale, no de otro", () => {
+    const snap = snapshot({
+      purchases: [compra("c1", "2026-01-01", [["p", 40, 5]], "cuba")],
+      assignments: [asignacion("a1", "A", "2026-01-02", [["p", 10, 10, 5]])],
+    });
+    expect(almacenStock(snap, "alm-cuba").get("p")).toBe(30);
+    expect(almacenStock(snap, "alm-eeuu").get("p") ?? 0).toBe(0);
   });
 });

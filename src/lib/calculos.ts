@@ -1,10 +1,13 @@
 import type {
   Ajuste,
   AjusteItem,
+  Almacen,
   Assignment,
   AssignmentItem,
   Corte,
   CorteItem,
+  Envio,
+  EnvioItem,
   Gasto,
   Payment,
   Product,
@@ -26,6 +29,7 @@ export type CorteFull = Corte & { items: CorteItem[] };
 export type RetiroFull = Retiro & { items: RetiroItem[] };
 export type AjusteFull = Ajuste & { items: AjusteItem[] };
 export type PurchaseFull = Purchase & { items: PurchaseItem[] };
+export type EnvioFull = Envio & { items: EnvioItem[] };
 
 export type Snapshot = {
   sellers: Seller[];
@@ -38,6 +42,8 @@ export type Snapshot = {
   retiros: RetiroFull[];
   ajustes: AjusteFull[];
   gastos: Gasto[];
+  almacenes: Almacen[];
+  envios: EnvioFull[];
 };
 
 /** Estado de una línea de asignación (producto entregado a un vendedor). */
@@ -274,6 +280,67 @@ export function avgCosto(snap: Snapshot, productId: string): number {
  * había, y esconderlo solo retrasa el momento de descubrirlo: la mercancía
  * aparecía como agotada en vez de como imposible. Quien pinte esto debe enseñar
  * el negativo.
+ */
+/**
+ * Existencias de un almacén concreto, producto a producto.
+ *
+ * La mercancía entra por compra, por envío recibido y por recogida desde un
+ * vendedor; sale por envío despachado, por asignación y por merma. **Un envío
+ * en tránsito ya salió del origen pero todavía no ha llegado**: por eso descuenta
+ * al despachar y solo suma al recibirse. Esa mercancía se cuenta aparte, en
+ * `stockEnTransito`.
+ *
+ * No se recorta a cero: un negativo significa que se entregó más de lo que
+ * había, y esconderlo solo retrasa el momento de descubrirlo.
+ */
+export function almacenStock(snap: Snapshot, almacenId: string): Map<string, number> {
+  const stock = new Map<string, number>();
+  const suma = (id: string, n: number) => stock.set(id, (stock.get(id) ?? 0) + n);
+
+  for (const p of snap.purchases) {
+    if (p.almacen_id !== almacenId) continue;
+    for (const it of p.items) suma(it.product_id, it.cantidad);
+  }
+  for (const e of snap.envios) {
+    // Sale del origen en cuanto se despacha, esté o no en camino.
+    if (e.origen_id === almacenId) {
+      for (const it of e.items) suma(it.product_id, -it.cantidad);
+    }
+    // Entra en el destino solo cuando de verdad llegó.
+    if (e.estado === "recibido" && e.destino_tipo === "almacen" && e.destino_id === almacenId) {
+      for (const it of e.items) suma(it.product_id, it.cantidad);
+    }
+  }
+  const traspasos = new Set(snap.retiros.filter((r) => r.destino !== "almacen").map((r) => r.id));
+  for (const a of snap.assignments) {
+    if (traspasos.has(a.id)) continue;
+    if (a.almacen_id !== almacenId) continue;
+    for (const it of a.items) suma(it.product_id, -it.cantidad);
+  }
+  for (const r of snap.retiros) {
+    if (r.destino !== "almacen" || r.destino_almacen_id !== almacenId) continue;
+    for (const it of r.items) suma(it.product_id, it.cantidad);
+  }
+  for (const a of snap.ajustes) {
+    if (a.seller_id !== null || a.almacen_id !== almacenId) continue;
+    for (const it of a.items) suma(it.product_id, -it.cantidad);
+  }
+  return stock;
+}
+
+/** Mercancía despachada que todavía no ha llegado a su destino. */
+export function stockEnTransito(snap: Snapshot): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const e of snap.envios) {
+    if (e.estado !== "transito") continue;
+    for (const it of e.items) m.set(it.product_id, (m.get(it.product_id) ?? 0) + it.cantidad);
+  }
+  return m;
+}
+
+/**
+ * Existencias sumando todos los almacenes. Se conserva porque media app razona
+ * en términos de "hay o no hay", sin importar dónde.
  */
 export function warehouseStock(snap: Snapshot): Map<string, number> {
   const stock = new Map<string, number>();
