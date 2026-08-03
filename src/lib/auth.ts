@@ -52,7 +52,11 @@ export async function verifyPin(pin: string, hash: string): Promise<boolean> {
  * devuelve la app a este estado, así que esta puerta lo protege también.
  */
 export async function checkSetupToken(token: string): Promise<{ ok: boolean; sinConfigurar: boolean }> {
-  const esperado = await getSecret("SETUP_TOKEN");
+  // Se recorta también el valor guardado: pegar el token en el prompt de
+  // `wrangler secret put` arrastra a veces un salto de línea invisible, y sin
+  // esto no habría forma de acertar nunca — ni de verlo, porque los secretos
+  // de Cloudflare no se pueden volver a leer.
+  const esperado = (await getSecret("SETUP_TOKEN"))?.trim();
   if (!esperado) return { ok: false, sinConfigurar: true };
   return { ok: igualSinFiltrar(token, esperado), sinConfigurar: false };
 }

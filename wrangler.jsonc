@@ -4,6 +4,10 @@
   "name": "reportes-ventas",
   "compatibility_date": "2026-07-31",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // Explícito a propósito: sin estas dos líneas, `deploy` decide por su cuenta
+  // y publica la app y sus versiones anteriores. Pásalo a false para bajarla.
+  "workers_dev": true,
+  "preview_urls": false,
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
