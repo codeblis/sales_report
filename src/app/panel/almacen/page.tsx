@@ -10,7 +10,11 @@ export const dynamic = "force-dynamic";
 
 export default async function AlmacenPage() {
   const snap = await loadSnapshot();
-  const wl = warehouseLines(snap).filter((w) => w.almacen > 0);
+  const todas = warehouseLines(snap);
+  const wl = todas.filter((w) => w.almacen > 0);
+  // Existencias imposibles: se entregó más de lo comprado. Antes quedaban fuera
+  // del filtro de arriba y no se veían en ninguna parte.
+  const descuadres = todas.filter((w) => w.almacen < 0);
   const bySeller = new Map(snap.sellers.map((s) => [s.id, s.nombre]));
 
   const valorCosto = wl.reduce((s, w) => s + w.almacen * avgCosto(snap, w.productId), 0);
@@ -88,6 +92,23 @@ export default async function AlmacenPage() {
             <div className="sub">Existencias a costo promedio, sin contar lo asignado</div>
           </div>
         </div>
+        {descuadres.length > 0 && (
+          <p className="notice" role="alert">
+            <b>Hay existencias en negativo.</b> Se entregó a los vendedores más mercancía de la que se había
+            comprado:{" "}
+            {descuadres.map((w, i) => (
+              <span key={w.productId}>
+                {i > 0 ? ", " : ""}
+                <b>{w.product}</b> ({qty(w.almacen)})
+              </span>
+            ))}
+            . Cuadra registrando la compra que falta, o eliminando la asignación de más desde{" "}
+            <Link href="/panel/asignar" style={{ color: "inherit" }}>
+              Asignar
+            </Link>
+            . De aquí en adelante la app ya no deja asignar por encima del stock.
+          </p>
+        )}
         <div className="tiles mt-4">
           <div className="glass tile">
             <div className="t-label">Valor en almacén</div>

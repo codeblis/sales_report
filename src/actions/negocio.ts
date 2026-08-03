@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/actions/admin";
+import { warehouseStock } from "@/lib/calculos";
 import { db, newId } from "@/lib/db";
+import { loadSnapshot } from "@/lib/repo";
 import type { AssignmentItem, Retiro, Sale } from "@/lib/types";
 
 const D = (form: FormData, name: string): string => String(form.get(name) ?? "").trim();
@@ -130,6 +132,23 @@ export async function createCorte(
     )
     .bind(sellerId)
     .all<Sale>();
+
+  // Un corte puede liquidar lo ya reportado y, además, lo que el vendedor
+  // todavía tiene en mano (eso convierte existencias en venta). Más que eso
+  // sería inventar ventas de mercancía que nunca tuvo: antes se aceptaba y el
+  // corte las creaba igual.
+  for (const item of items) {
+    const reportado = pending.results
+      .filter((s) => s.product_id === item.productId)
+      .reduce((s, x) => s + x.cantidad, 0);
+    const enMano = lines.filter((l) => l.product_id === item.productId).reduce((s, l) => s + l.enMano, 0);
+    const tope = reportado + enMano;
+    if (item.cantidad > tope) {
+      return {
+        error: `No se puede cortar ${item.cantidad} unidades: el vendedor solo tiene ${tope} entre lo reportado y lo que le queda en mano.`,
+      };
+    }
+  }
 
   // Todo el corte se escribe en una sola transacción: un fallo a mitad dejaría
   // ventas cortadas contra un corte que no existe.
@@ -390,6 +409,20 @@ export async function createAjuste(
       if (enMano < item.cantidad) {
         return { error: "El vendedor no tiene suficiente mercancía en mano para ajustar." };
       }
+    }
+  } else {
+    // Merma del almacén: tampoco se puede dar de baja lo que no está.
+    const snap = await loadSnapshot();
+    const stock = warehouseStock(snap);
+    const nombreDe = new Map(snap.products.map((p) => [p.id, p.nombre]));
+    const faltan = items
+      .filter((it) => (stock.get(it.productId) ?? 0) < it.cantidad)
+      .map(
+        (it) =>
+          `${nombreDe.get(it.productId) ?? "?"} (das de baja ${it.cantidad}, hay ${stock.get(it.productId) ?? 0})`,
+      );
+    if (faltan.length) {
+      return { error: `No hay suficiente en el almacén: ${faltan.join("; ")}.` };
     }
   }
 

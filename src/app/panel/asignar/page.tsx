@@ -2,6 +2,7 @@ import Link from "next/link";
 import { deleteAssignment } from "@/actions/catalogo";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { AssignmentForm } from "@/components/purchase-assignment-forms";
+import { warehouseStock } from "@/lib/calculos";
 import { money, qty, todayISO } from "@/lib/format";
 import { listProducts, listSellers, loadSnapshot } from "@/lib/repo";
 
@@ -11,6 +12,7 @@ export default async function AsignarPage({ searchParams }: { searchParams: Prom
   const { error } = await searchParams;
   const [snap, products, sellers] = await Promise.all([loadSnapshot(), listProducts(), listSellers()]);
   const activos = sellers.filter((s) => s.activo);
+  const stock = warehouseStock(snap);
   const bySeller = new Map(snap.sellers.map((s) => [s.id, s.nombre]));
   const asignaciones = [...snap.assignments].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 20);
   const salesCount = new Map<string, number>();
@@ -29,7 +31,13 @@ export default async function AsignarPage({ searchParams }: { searchParams: Prom
         </div>
         <div className="mt-4">
           <AssignmentForm
-            products={products.map((p) => ({ id: p.id, nombre: p.nombre, costo: p.costo, precio: p.precio }))}
+            products={products.map((p) => ({
+              id: p.id,
+              nombre: p.nombre,
+              costo: p.costo,
+              precio: p.precio,
+              almacen: stock.get(p.id) ?? 0,
+            }))}
             sellers={activos.map((s) => ({ id: s.id, nombre: s.nombre }))}
             fechaDefault={todayISO()}
           />

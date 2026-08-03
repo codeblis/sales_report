@@ -4,7 +4,12 @@ import { useActionState, useState } from "react";
 import { createAssignment, createPurchase } from "@/actions/catalogo";
 import { useCurrency } from "@/components/currency";
 
-export type ProductOpt = { id: string; nombre: string; costo: number; precio: number };
+/**
+ * `almacen` solo viaja en la asignación: una compra no tiene tope, pero
+ * entregar sí. Cuando viene, la fila enseña cuánto hay y avisa antes de que el
+ * servidor rechace la asignación entera.
+ */
+export type ProductOpt = { id: string; nombre: string; costo: number; precio: number; almacen?: number };
 type Row = { key: number; productId: string; cantidad: string; costo: string; precio: string };
 
 let rowSeq = 0;
@@ -55,6 +60,7 @@ function ProductRows({
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nombre}
+                  {p.almacen !== undefined ? ` · ${p.almacen} en almacén` : ""}
                 </option>
               ))}
             </select>
@@ -62,6 +68,7 @@ function ProductRows({
               className="input"
               type="number"
               min={0}
+              max={prod?.almacen}
               step="any"
               placeholder="Cant."
               name={`qty_${r.productId}`}
@@ -99,6 +106,12 @@ function ProductRows({
               ×
             </button>
             {prod && <span className="text-xs dim self-center">{money(prod.precio)}</span>}
+            {prod?.almacen !== undefined && Number(r.cantidad) > prod.almacen && (
+              <p className="notice" role="alert" style={{ gridColumn: "1 / -1", marginBottom: 0 }}>
+                Solo hay <b>{prod.almacen}</b> de {prod.nombre} en el almacén. Compra más antes de entregarle{" "}
+                {r.cantidad}.
+              </p>
+            )}
           </div>
         );
       })}

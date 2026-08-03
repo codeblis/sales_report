@@ -135,10 +135,18 @@ export default async function MercanciaPage({
         <section className="glass card">
           <div className="card-h">
             <div>
-              <h3>Importar desde Excel</h3>
+              <h3>Importar catálogo desde Excel</h3>
               <div className="sub">Código · Producto · Categoría · Costo · Precio</div>
             </div>
           </div>
+          <p className="notice">
+            Esto <b>no mete mercancía en el almacén</b>: solo da de alta los productos con su precio. Para que
+            haya existencias que puedas repartir, registra la compra en{" "}
+            <Link href="/panel/compras" style={{ color: "inherit" }}>
+              Compras
+            </Link>
+            , que es donde va la cantidad.
+          </p>
           <div className="mt-4">
             <ExcelDrop
               kind="productos"

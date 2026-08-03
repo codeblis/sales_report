@@ -267,6 +267,40 @@ export function avgCosto(snap: Snapshot, productId: string): number {
 }
 
 /** Posición de almacén por producto. */
+/**
+ * Existencias por producto en el almacén: comprado − asignado + devuelto − mermado.
+ *
+ * **No se recorta a cero.** Un negativo significa que se asignó más de lo que
+ * había, y esconderlo solo retrasa el momento de descubrirlo: la mercancía
+ * aparecía como agotada en vez de como imposible. Quien pinte esto debe enseñar
+ * el negativo.
+ */
+export function warehouseStock(snap: Snapshot): Map<string, number> {
+  const stock = new Map<string, number>();
+  const suma = (id: string, n: number) => stock.set(id, (stock.get(id) ?? 0) + n);
+
+  for (const p of snap.purchases) {
+    for (const it of p.items) suma(it.product_id, it.cantidad);
+  }
+  // Un traspaso entre vendedores crea una asignación que reusa el id de la
+  // recogida. Esa mercancía nunca volvió al almacén, así que no vuelve a salir
+  // de él: contarla como asignada restaría dos veces las mismas unidades.
+  const traspasos = new Set(snap.retiros.filter((r) => r.destino !== "almacen").map((r) => r.id));
+  for (const a of snap.assignments) {
+    if (traspasos.has(a.id)) continue;
+    for (const it of a.items) suma(it.product_id, -it.cantidad);
+  }
+  for (const r of snap.retiros) {
+    if (r.destino !== "almacen") continue;
+    for (const it of r.items) suma(it.product_id, it.cantidad);
+  }
+  for (const a of snap.ajustes) {
+    if (a.seller_id !== null) continue;
+    for (const it of a.items) suma(it.product_id, -it.cantidad);
+  }
+  return stock;
+}
+
 export function warehouseLines(snap: Snapshot): ProductView[] {
   const byProduct = new Map(snap.products.map((p) => [p.id, p]));
   const purchased = new Map<string, number>();
@@ -297,6 +331,7 @@ export function warehouseLines(snap: Snapshot): ProductView[] {
     for (const it of a.items) adjusted.set(it.product_id, (adjusted.get(it.product_id) ?? 0) + it.cantidad);
   }
 
+  const stockDe = warehouseStock(snap);
   const ids = new Set([...purchased.keys(), ...assigned.keys(), ...returned.keys(), ...adjusted.keys()]);
   const out: ProductView[] = [];
   for (const id of ids) {
@@ -304,7 +339,8 @@ export function warehouseLines(snap: Snapshot): ProductView[] {
     if (!p?.activo) continue;
     const comprado = purchased.get(id) ?? 0;
     const asignado = assigned.get(id) ?? 0;
-    const stock = Math.max(0, comprado - asignado + (returned.get(id) ?? 0) - (adjusted.get(id) ?? 0));
+    // Sin recortar a cero: ver warehouseStock.
+    const stock = stockDe.get(id) ?? 0;
     out.push({
       productId: id,
       product: p.nombre,

@@ -14,6 +14,7 @@ import {
   sellerRanking,
   sellerTotals,
   warehouseLines,
+  warehouseStock,
 } from "@/lib/calculos";
 import type { Product, Seller } from "@/lib/types";
 
@@ -225,6 +226,38 @@ describe("warehouseLines", () => {
   it("deja fuera los productos inactivos", () => {
     const snap = snapshot({ products: [{ ...producto("p"), activo: 0 }] });
     expect(warehouseLines(snap)).toHaveLength(0);
+  });
+
+  it("enseña el negativo cuando se asignó de más, en vez de recortarlo a cero", () => {
+    // Antes se recortaba con Math.max(0, …), así que asignar 120 de 100 dejaba
+    // el almacén "agotado" en lugar de delatar que la cuenta era imposible.
+    const snap = snapshot({
+      assignments: [asignacion("a1", "A", "2026-01-02", [["p", 120, 10, 5]])],
+    });
+    expect(almacenDe(snap)).toBe(-20);
+  });
+});
+
+/* ---------------- warehouseStock ---------------- */
+
+describe("warehouseStock", () => {
+  it("cuenta compras, asignaciones, devoluciones y mermas", () => {
+    const snap = snapshot({
+      retiros: [retiro("r1", "A", "2026-01-04", "almacen", [["a1", "p", 4]])],
+      ajustes: [ajuste("aj1", null, "2026-01-05", [[null, "p", 5]])],
+    });
+    // 100 compradas − 10 asignadas + 4 devueltas − 5 mermadas
+    expect(warehouseStock(snap).get("p")).toBe(89);
+  });
+
+  it("no cuenta la merma de un vendedor como salida del almacén", () => {
+    // Esa mercancía ya había salido al asignarla: restarla otra vez la contaría dos veces.
+    const snap = snapshot({ ajustes: [ajuste("aj1", "A", "2026-01-05", [["a1", "p", 3]])] });
+    expect(warehouseStock(snap).get("p")).toBe(90);
+  });
+
+  it("un producto sin movimientos no tiene existencias", () => {
+    expect(warehouseStock(snapshot()).get("desconocido")).toBeUndefined();
   });
 });
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/actions/admin";
-import { avgCosto, warehouseLines } from "@/lib/calculos";
+import { avgCosto, warehouseLines, warehouseStock } from "@/lib/calculos";
 import { db, newId } from "@/lib/db";
 import { loadSnapshot } from "@/lib/repo";
 
@@ -312,8 +312,24 @@ export async function createAssignment(_prev: MutResult, formData: FormData): Pr
   }
   if (!sellerId || !fecha || !items.length) return { error: "Faltan datos de la asignación." };
 
-  // Costo congelado: promedio ponderado de las compras del producto.
   const snap = await loadSnapshot();
+
+  // No se puede entregar lo que no hay. Se comprueban todas las líneas antes de
+  // escribir nada: una asignación a medias dejaría al vendedor con mercancía
+  // que el almacén no descontó.
+  const stock = warehouseStock(snap);
+  const nombreDe = new Map(snap.products.map((p) => [p.id, p.nombre]));
+  const faltan = items
+    .filter((it) => (stock.get(it.productId) ?? 0) < it.cantidad)
+    .map(
+      (it) =>
+        `${nombreDe.get(it.productId) ?? "?"} (pides ${it.cantidad}, hay ${stock.get(it.productId) ?? 0})`,
+    );
+  if (faltan.length) {
+    return { error: `No hay suficiente en el almacén: ${faltan.join("; ")}.` };
+  }
+
+  // Costo congelado: promedio ponderado de las compras del producto.
   const costoDe = new Map<string, number>();
   for (const it of items) costoDe.set(it.productId, avgCosto(snap, it.productId));
 
