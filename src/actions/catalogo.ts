@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/actions/admin";
-import { avgCosto, warehouseLines, warehouseStock } from "@/lib/calculos";
+import { almacenStock, avgCosto, warehouseLines } from "@/lib/calculos";
 import { db, newId } from "@/lib/db";
 import { loadSnapshot } from "@/lib/repo";
 
@@ -414,11 +414,18 @@ export async function createAssignment(_prev: MutResult, formData: FormData): Pr
   if (!sellerId || !fecha || !items.length) return { error: "Faltan datos de la asignación." };
 
   const snap = await loadSnapshot();
+  const almacenId =
+    String(formData.get("almacen_id") ?? "").trim() ||
+    snap.almacenes.find((a) => a.pais === "cuba" && a.activo)?.id ||
+    snap.almacenes[0]?.id ||
+    "";
+  const costoDistribucion = Number(formData.get("costo_distribucion") ?? 0) || 0;
 
-  // No se puede entregar lo que no hay. Se comprueban todas las líneas antes de
-  // escribir nada: una asignación a medias dejaría al vendedor con mercancía
-  // que el almacén no descontó.
-  const stock = warehouseStock(snap);
+  // No se puede entregar lo que no hay, y se mira el almacén del que sale: la
+  // mercancía en Miami no sirve para un vendedor en Cuba. Se comprueban todas
+  // las líneas antes de escribir nada, porque una asignación a medias dejaría
+  // al vendedor con mercancía que el almacén no descontó.
+  const stock = almacenStock(snap, almacenId);
   const nombreDe = new Map(snap.products.map((p) => [p.id, p.nombre]));
   const faltan = items
     .filter((it) => (stock.get(it.productId) ?? 0) < it.cantidad)
@@ -427,7 +434,8 @@ export async function createAssignment(_prev: MutResult, formData: FormData): Pr
         `${nombreDe.get(it.productId) ?? "?"} (pides ${it.cantidad}, hay ${stock.get(it.productId) ?? 0})`,
     );
   if (faltan.length) {
-    return { error: `No hay suficiente en el almacén: ${faltan.join("; ")}.` };
+    const donde = snap.almacenes.find((a) => a.id === almacenId)?.nombre ?? "el almacén";
+    return { error: `No hay suficiente en ${donde}: ${faltan.join("; ")}.` };
   }
 
   // Costo congelado: promedio ponderado de las compras del producto.
@@ -437,8 +445,10 @@ export async function createAssignment(_prev: MutResult, formData: FormData): Pr
   const d = await db();
   const id = newId();
   await d
-    .prepare("INSERT INTO assignments (id, seller_id, fecha, nota) VALUES (?1,?2,?3,?4)")
-    .bind(id, sellerId, fecha, nota)
+    .prepare(
+      "INSERT INTO assignments (id, seller_id, fecha, nota, costo_distribucion, almacen_id) VALUES (?1,?2,?3,?4,?5,?6)",
+    )
+    .bind(id, sellerId, fecha, nota, costoDistribucion, almacenId)
     .run();
   for (const it of items) {
     await d

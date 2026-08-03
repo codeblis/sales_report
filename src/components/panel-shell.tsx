@@ -11,6 +11,7 @@ const ITEMS = [
   { href: "/panel/ventas", label: "Ventas" },
   { href: "/panel/pagos", label: "Pagos" },
   { href: "/panel/gastos", label: "Gastos" },
+  { href: "/panel/envios", label: "Envíos" },
   { href: "/panel/recogidas", label: "Recogidas" },
   { href: "/panel/mercancia", label: "Mercancía" },
   { href: "/panel/almacen", label: "Almacén" },

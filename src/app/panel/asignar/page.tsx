@@ -2,7 +2,7 @@ import Link from "next/link";
 import { deleteAssignment } from "@/actions/catalogo";
 import { ConfirmSubmit } from "@/components/confirm-submit";
 import { AssignmentForm } from "@/components/purchase-assignment-forms";
-import { warehouseStock } from "@/lib/calculos";
+import { almacenStock } from "@/lib/calculos";
 import { money, qty, todayISO } from "@/lib/format";
 import { listProducts, listSellers, loadSnapshot } from "@/lib/repo";
 
@@ -12,7 +12,10 @@ export default async function AsignarPage({ searchParams }: { searchParams: Prom
   const { error } = await searchParams;
   const [snap, products, sellers] = await Promise.all([loadSnapshot(), listProducts(), listSellers()]);
   const activos = sellers.filter((s) => s.activo);
-  const stock = warehouseStock(snap);
+  const almacenes = snap.almacenes.filter((a) => a.activo);
+  // El desplegable arranca en el almacén de Cuba, que es de donde se reparte.
+  const almacenPorDefecto = almacenes.find((a) => a.pais === "cuba") ?? almacenes[0];
+  const stock = almacenPorDefecto ? almacenStock(snap, almacenPorDefecto.id) : new Map<string, number>();
   const bySeller = new Map(snap.sellers.map((s) => [s.id, s.nombre]));
   const asignaciones = [...snap.assignments].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 20);
   const salesCount = new Map<string, number>();
@@ -39,6 +42,10 @@ export default async function AsignarPage({ searchParams }: { searchParams: Prom
               almacen: stock.get(p.id) ?? 0,
             }))}
             sellers={activos.map((s) => ({ id: s.id, nombre: s.nombre }))}
+            almacenes={[
+              ...(almacenPorDefecto ? [almacenPorDefecto] : []),
+              ...almacenes.filter((a) => a.id !== almacenPorDefecto?.id),
+            ].map((a) => ({ id: a.id, nombre: a.nombre }))}
             fechaDefault={todayISO()}
           />
         </div>

@@ -98,6 +98,7 @@ export default async function ComprasPage({ searchParams }: { searchParams: Prom
                 costo: p.costo,
                 precio: p.precio,
               }))}
+              almacenes={snap.almacenes.filter((a) => a.activo).map((a) => ({ id: a.id, nombre: a.nombre }))}
               fechaDefault={todayISO()}
             />
           </div>

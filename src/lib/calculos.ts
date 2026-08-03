@@ -434,7 +434,17 @@ export type GlobalMetrics = {
   ventasMonto: number;
   ganancia: number;
   gastosMonto: number;
-  /** Ganancia de las ventas menos los gastos del negocio. */
+  /** Lo que costó traer la mercancía hasta Cuba. */
+  enviosMonto: number;
+  /** Lo que costó repartirla ya en Cuba, entre almacenes y vendedores. */
+  distribucionMonto: number;
+  /**
+   * Ingresos − costo de la mercancía − envíos − distribución − gastos.
+   *
+   * Los fletes no se promedian dentro del costo unitario: cada paquete cuesta
+   * lo suyo y no toda la mercancía viaja junta, así que repartirlo mentiría
+   * sobre el costo de cada producto. Se restan aquí, enteros.
+   */
   gananciaNeta: number;
   unidadesVendidas: number;
   compradoValor: number;
@@ -455,6 +465,8 @@ export function globalMetrics(snap: Snapshot, from?: string, to?: string): Globa
     ventasMonto: 0,
     ganancia: 0,
     gastosMonto: 0,
+    enviosMonto: 0,
+    distribucionMonto: 0,
     gananciaNeta: 0,
     unidadesVendidas: 0,
     compradoValor: 0,
@@ -501,7 +513,19 @@ export function globalMetrics(snap: Snapshot, from?: string, to?: string): Globa
     if (!inRange(gasto.fecha, from, to)) continue;
     g.gastosMonto += gasto.monto;
   }
-  g.gananciaNeta = g.ganancia - g.gastosMonto;
+  for (const e of snap.envios) {
+    if (!inRange(e.fecha, from, to)) continue;
+    g.enviosMonto += e.costo;
+  }
+  for (const a of snap.assignments) {
+    if (!inRange(a.fecha, from, to)) continue;
+    g.distribucionMonto += a.costo_distribucion;
+  }
+  for (const r of snap.retiros) {
+    if (!inRange(r.fecha, from, to)) continue;
+    g.distribucionMonto += r.costo_distribucion;
+  }
+  g.gananciaNeta = g.ganancia - g.enviosMonto - g.distribucionMonto - g.gastosMonto;
   g.debeTotal =
     snap.cortes.reduce((s, c) => {
       let total = 0;

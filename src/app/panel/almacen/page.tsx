@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { deleteAjuste, deleteRetiro } from "@/actions/negocio";
 import { WarehouseAdjustForm } from "@/components/warehouse-adjust-form";
-import { avgCosto, warehouseLines } from "@/lib/calculos";
+import { almacenStock, avgCosto, stockEnTransito, warehouseLines } from "@/lib/calculos";
 import { money, qty, todayISO } from "@/lib/format";
 import { loadSnapshot } from "@/lib/repo";
 
@@ -19,6 +19,20 @@ export default async function AlmacenPage() {
 
   const valorCosto = wl.reduce((s, w) => s + w.almacen * avgCosto(snap, w.productId), 0);
   const unidades = wl.reduce((s, w) => s + w.almacen, 0);
+
+  // Dónde está de verdad cada unidad: por almacén, y lo que va embarcado.
+  const porAlmacen = snap.almacenes
+    .filter((a) => a.activo)
+    .map((a) => {
+      const stock = almacenStock(snap, a.id);
+      return {
+        ...a,
+        unidades: [...stock.values()].reduce((s, n) => s + n, 0),
+        valor: [...stock.entries()].reduce((s, [id, n]) => s + n * avgCosto(snap, id), 0),
+      };
+    });
+  const transito = stockEnTransito(snap);
+  const unidadesTransito = [...transito.values()].reduce((s, n) => s + n, 0);
 
   type Row = {
     key: string;
@@ -110,8 +124,22 @@ export default async function AlmacenPage() {
           </p>
         )}
         <div className="tiles mt-4">
+          {porAlmacen.map((a) => (
+            <div key={a.id} className="glass tile">
+              <div className="t-label">{a.nombre}</div>
+              <div className="t-val">{qty(a.unidades)}</div>
+              <div className="t-foot">{money(a.valor)} a costo</div>
+            </div>
+          ))}
+          {unidadesTransito > 0 && (
+            <div className="glass tile">
+              <div className="t-label">En camino a Cuba</div>
+              <div className="t-val">{qty(unidadesTransito)}</div>
+              <div className="t-foot">despachado, sin llegar</div>
+            </div>
+          )}
           <div className="glass tile">
-            <div className="t-label">Valor en almacén</div>
+            <div className="t-label">Valor total</div>
             <div className="t-val">{money(valorCosto)}</div>
             <div className="t-foot">a costo de compra</div>
           </div>

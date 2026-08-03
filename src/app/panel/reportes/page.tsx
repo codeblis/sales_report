@@ -153,6 +153,14 @@ export default async function ReportesPage({
             <div className="ts">gastos</div>
           </div>
           <div className="glass tile">
+            <div className="tl">{money(g.enviosMonto)}</div>
+            <div className="ts">envíos a Cuba</div>
+          </div>
+          <div className="glass tile">
+            <div className="tl">{money(g.distribucionMonto)}</div>
+            <div className="ts">distribución</div>
+          </div>
+          <div className="glass tile">
             <div className="tl">{money(g.gananciaNeta)}</div>
             <div className="ts">ganancia neta</div>
           </div>

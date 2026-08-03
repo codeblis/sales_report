@@ -124,7 +124,15 @@ function ProductRows({
   );
 }
 
-export function PurchaseForm({ products, fechaDefault }: { products: ProductOpt[]; fechaDefault: string }) {
+export function PurchaseForm({
+  products,
+  almacenes,
+  fechaDefault,
+}: {
+  products: ProductOpt[];
+  almacenes: { id: string; nombre: string }[];
+  fechaDefault: string;
+}) {
   const [state, formAction, pending] = useActionState(createPurchase, {});
   const [rows, setRows] = useState<Row[]>([newRow()]);
   return (
@@ -140,6 +148,16 @@ export function PurchaseForm({ products, fechaDefault }: { products: ProductOpt[
             defaultValue={fechaDefault}
             required
           />
+        </div>
+        <div className="field">
+          <label htmlFor="compra-almacen">Entra en</label>
+          <select className="select" id="compra-almacen" name="ubicacion" required>
+            {almacenes.map((a) => (
+              <option key={a.id} value={a.id === "alm-cuba" ? "cuba" : "eeuu"}>
+                {a.nombre}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="field">
           <label htmlFor="compra-nota">Nota</label>
@@ -169,10 +187,12 @@ export function PurchaseForm({ products, fechaDefault }: { products: ProductOpt[
 export function AssignmentForm({
   products,
   sellers,
+  almacenes,
   fechaDefault,
 }: {
   products: ProductOpt[];
   sellers: { id: string; nombre: string }[];
+  almacenes: { id: string; nombre: string }[];
   fechaDefault: string;
 }) {
   const [state, formAction, pending] = useActionState(createAssignment, {});
@@ -201,6 +221,29 @@ export function AssignmentForm({
               type="date"
               defaultValue={fechaDefault}
               required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="asig-almacen">Sale de</label>
+            <select className="select" id="asig-almacen" name="almacen_id" required>
+              {almacenes.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="asig-costo">Costo de distribución</label>
+            <input
+              className="input"
+              id="asig-costo"
+              name="costo_distribucion"
+              type="number"
+              min={0}
+              step="any"
+              placeholder="0"
+              title="Lo que cuesta hacerle llegar la mercancía. No entra en el costo unitario."
             />
           </div>
           <div className="field">
